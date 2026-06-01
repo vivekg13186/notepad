@@ -59,9 +59,9 @@ VISUAL mode: move to extend selection; `y` yank, `d`/`x` cut, `p` paste, ESC can
 Commands:
 
 ```
-:s              save
-:s <file>       save as (supports ~/ paths, e.g. :s ~/Desktop/hello.js)
-:sq             save and quit
+:w              save
+:w <file>       save as (supports ~/ paths, e.g. :w ~/Desktop/hello.js)
+:wq             save and quit
 :q              quit (fails if dirty)
 :q!             force quit
 :o <file>       open file (supports ~/ paths)

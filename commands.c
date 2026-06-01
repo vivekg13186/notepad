@@ -161,17 +161,17 @@ bool cmd_execute(Editor *ed, const char *line_in) {
     if (strcmp(line, "q!") == 0) { ed->quit = true; return false; }
 
     /* ---- save ---- */
-    if (strcmp(line, "s") == 0) {
+    if (strcmp(line, "w") == 0) {
         if (ed_save(ed)) set_status(ed, "saved %s", ed->filename);
         else             set_status(ed, "save failed (no filename?)");
         return true;
     }
-    if (strncmp(line, "s ", 2) == 0) {
+    if (strncmp(line, "w ", 2) == 0) {
         if (do_save_as(ed, line + 2)) set_status(ed, "saved %s", ed->filename);
         else                          set_status(ed, "save failed: %s", ed->filename);
         return true;
     }
-    if (strcmp(line, "sq") == 0) {
+    if (strcmp(line, "wq") == 0) {
         if (ed_save(ed)) { ed->quit = true; return false; }
         set_status(ed, "save failed");
         return true;

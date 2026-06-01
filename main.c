@@ -520,6 +520,101 @@ static void handle_command_or_search(Editor *ed) {
     }
 }
 
+/* ---- system clipboard helpers (Ctrl/Cmd C / V / X) ---- */
+
+static bool is_mod_down(void) {
+    return IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)
+        || IsKeyDown(KEY_LEFT_SUPER)   || IsKeyDown(KEY_RIGHT_SUPER);
+}
+
+/* Replace ed->clipboard with `data` (len bytes) and mirror to the OS. */
+static void clipboard_store(Editor *ed, const char *data, size_t len) {
+    free(ed->clipboard);
+    ed->clipboard = (char *)malloc(len + 1);
+    memcpy(ed->clipboard, data, len);
+    ed->clipboard[len] = 0;
+    ed->clipboard_len = len;
+    SetClipboardText(ed->clipboard);
+}
+
+/* Copy the active selection if any; otherwise copy the current line. */
+static void clipboard_copy(Editor *ed) {
+    if (ed->has_selection) {
+        size_t s, e;
+        ed_get_selection(ed, &s, &e);
+        if (e <= s) return;
+        char *buf = (char *)malloc(e - s + 1);
+        gb_copy_range(&ed->gb, s, e, buf);
+        buf[e - s] = 0;
+        clipboard_store(ed, buf, e - s);
+        free(buf);
+        ed_set_status(ed, "copied selection");
+    } else {
+        size_t ln, col;
+        ed_cursor_line_col(ed, &ln, &col);
+        size_t s = ed_line_start(ed, ln);
+        size_t e = s + ed_line_length(ed, ln);
+        char *buf = (char *)malloc(e - s + 2);
+        gb_copy_range(&ed->gb, s, e, buf);
+        buf[e - s] = '\n';
+        buf[e - s + 1] = 0;
+        clipboard_store(ed, buf, e - s + 1);
+        free(buf);
+        ed_set_status(ed, "copied line");
+    }
+}
+
+/* Insert system clipboard at the cursor (or replace selection). */
+static void clipboard_paste(Editor *ed) {
+    const char *sys = GetClipboardText();
+    if (!sys || !*sys) return;
+    size_t len = strlen(sys);
+    /* mirror into ed->clipboard so subsequent `p` reuses the same payload */
+    clipboard_store(ed, sys, len);
+    if (ed->has_selection) ed_delete_selection(ed);
+    gb_insert_str(&ed->gb, ed->cursor, ed->clipboard, ed->clipboard_len);
+    ed->cursor += ed->clipboard_len;
+    ed->dirty = true;
+    ed_set_status(ed, "pasted");
+}
+
+/* Cut = copy + delete (selection or current line). */
+static void clipboard_cut(Editor *ed) {
+    clipboard_copy(ed);
+    if (ed->has_selection) {
+        ed_delete_selection(ed);
+    } else {
+        size_t ln, col;
+        ed_cursor_line_col(ed, &ln, &col);
+        size_t s = ed_line_start(ed, ln);
+        size_t e = s + ed_line_length(ed, ln);
+        if (e < gb_length(&ed->gb)) e++;   /* swallow the trailing newline */
+        gb_delete(&ed->gb, s, e - s);
+        ed->cursor = s;
+        ed->dirty = true;
+    }
+    ed_set_status(ed, "cut");
+}
+
+static bool handle_clipboard_shortcuts(Editor *ed) {
+    if (!is_mod_down()) return false;
+    /* Only meaningful for editor modes — pickers / help / cmdline are skipped
+       at the caller. */
+    if (IsKeyPressed(KEY_C)) { clipboard_copy(ed);
+                               if (ed->mode == MODE_VISUAL) {
+                                   ed_clear_selection(ed);
+                                   ed->mode = MODE_NORMAL;
+                               }
+                               return true; }
+    if (IsKeyPressed(KEY_X)) { clipboard_cut(ed);
+                               if (ed->mode == MODE_VISUAL) ed->mode = MODE_NORMAL;
+                               return true; }
+    if (IsKeyPressed(KEY_V)) { clipboard_paste(ed);
+                               if (ed->mode == MODE_VISUAL) ed->mode = MODE_NORMAL;
+                               return true; }
+    return false;
+}
+
 static void handle_input(Editor *ed) {
     /* Format picker (no live preview — Enter commits, Esc cancels). */
     if (g_fmt_picker_open) {
@@ -579,6 +674,19 @@ static void handle_input(Editor *ed) {
         }
         return;
     }
+
+    /* System clipboard shortcuts — intercept before mode dispatch so the
+       same Ctrl+C / Ctrl+V / Ctrl+X work in NORMAL / INSERT / VISUAL.
+       Skipped while typing :commands or /search so those keys still type. */
+    if (ed->mode != MODE_COMMAND && ed->mode != MODE_SEARCH) {
+        if (handle_clipboard_shortcuts(ed)) {
+            /* Drain any character event the modifier+key generated so it
+               doesn't get re-interpreted by the mode handler below. */
+            while (GetCharPressed() > 0) {}
+            return;
+        }
+    }
+
     switch (ed->mode) {
         case MODE_NORMAL:  handle_normal(ed); break;
         case MODE_INSERT:  handle_insert(ed); break;
@@ -593,9 +701,9 @@ static void handle_input(Editor *ed) {
 static const char *HELP_LINES[] = {
     "notepad — commands",
     "",
-    ":s                  save",
-    ":s <file>           save as (supports ~/ paths)",
-    ":sq                 save and quit",
+    ":w                  save",
+    ":w <file>           save as (supports ~/ paths)",
+    ":wq                 save and quit",
     ":q                  quit (fails if dirty)",
     ":q!                 force quit",
     ":o <file>           open file (supports ~/ paths)",
@@ -755,9 +863,12 @@ int main(int argc, char **argv) {
     if (file) auto_select_grammar(file);
     if (!g_syntax_loaded && grammar && *grammar) load_grammar(grammar);
 
-    /* MSAA smooths shape/line edges; HighDPI gives Retina-native rendering.
-       VSYNC hint avoids tearing.  All must be set before InitWindow. */
-    SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
+    /* MSAA smooths shape/line edges; HighDPI gives Retina-native rendering;
+       VSYNC hint avoids tearing; RESIZABLE lets the user drag the window
+       — the renderer pulls W/H from GetScreenWidth/Height each frame so the
+       layout reflows automatically. All must be set before InitWindow. */
+    SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT |
+                   FLAG_WINDOW_HIGHDPI | FLAG_WINDOW_RESIZABLE);
     InitWindow(g_config.window_w, g_config.window_h, "notepad");
     SetTargetFPS(60);
     SetExitKey(0);
