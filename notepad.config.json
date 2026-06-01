@@ -1,0 +1,38 @@
+{
+  "theme":       "darks",
+  "grammar":     "./syntax/c.tmLanguage.json",
+  "font_size":   18,
+  "line_height": 22,
+  "tab_width":   4,
+  "window_w":    1100,
+  "window_h":    720,
+  "gutter_w":    60,
+
+  "themes": {
+    "darks":          "./themes/dark.json",
+    "light":          "./themes/light.json",
+    "solarized-dark": "./themes/solarized-dark.json",
+    "basic":          "./themes/basic.json",
+    "clear-dark":     "./themes/clear-dark.json",
+    "clear-light":    "./themes/clear-light.json",
+    "grass":          "./themes/grass.json"
+  },
+
+  "$schema": {
+    "**.c": {
+      "file_extensions": [".c", ".h"],
+      "name":            "C",
+      "grammar":         "./syntax/c.tmLanguage.json"
+    },
+    "**.js": {
+      "file_extensions": [".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx"],
+      "name":            "JavaScript",
+      "grammar":         "./syntax/js.tmLanguage.json"
+    },
+    "**.py": {
+      "file_extensions": [".py", ".pyw", ".pyi"],
+      "name":            "Python",
+      "grammar":         "./syntax/python.tmLanguage.json"
+    }
+  }
+}

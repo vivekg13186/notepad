@@ -1,0 +1,25 @@
+{
+  "name": "Solarized Dark",
+  "bg":            "#002b36",
+  "fg":            "#839496",
+  "gutter_bg":     "#073642",
+  "gutter_fg":     "#586e75",
+  "gutter_fg_cur": "#93a1a1",
+  "status_bg":     "#073642",
+  "status_fg":     "#93a1a1",
+  "cursor":        "#93a1a1",
+  "cursor_block":  "#93a1a160",
+  "cursor_glyph":  "#002b36",
+  "selection":     "#073642c8",
+  "syntax": {
+    "default":  "#839496",
+    "keyword":  "#859900",
+    "string":   "#2aa198",
+    "comment":  "#586e75",
+    "number":   "#d33682",
+    "type":     "#b58900",
+    "constant": "#cb4b16",
+    "function": "#268bd2",
+    "operator": "#93a1a1"
+  }
+}

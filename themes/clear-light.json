@@ -1,0 +1,25 @@
+{
+  "name": "Clear Light",
+  "bg":            "#f7f7f7",
+  "fg":            "#2a2a2a",
+  "gutter_bg":     "#ececec",
+  "gutter_fg":     "#9a9a9a",
+  "gutter_fg_cur": "#2a2a2a",
+  "status_bg":     "#e2e2e2",
+  "status_fg":     "#2a2a2a",
+  "cursor":        "#2a2a2a",
+  "cursor_block":  "#2a2a2a50",
+  "cursor_glyph":  "#f7f7f7",
+  "selection":     "#b4d5ffaa",
+  "syntax": {
+    "default":  "#2a2a2a",
+    "keyword":  "#a31515",
+    "string":   "#008000",
+    "comment":  "#888888",
+    "number":   "#b8860b",
+    "type":     "#2f5acc",
+    "constant": "#2f5acc",
+    "function": "#1a73e8",
+    "operator": "#555555"
+  }
+}

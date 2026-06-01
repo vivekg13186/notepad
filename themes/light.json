@@ -1,0 +1,25 @@
+{
+  "name": "Light",
+  "bg":            "#fafafa",
+  "fg":            "#282c34",
+  "gutter_bg":     "#f0f0f0",
+  "gutter_fg":     "#a0a5aa",
+  "gutter_fg_cur": "#282c34",
+  "status_bg":     "#e6e6e6",
+  "status_fg":     "#282c34",
+  "cursor":        "#282c34",
+  "cursor_block":  "#282c3450",
+  "cursor_glyph":  "#fafafa",
+  "selection":     "#b4c8f0b4",
+  "syntax": {
+    "default":  "#282c34",
+    "keyword":  "#a626a4",
+    "string":   "#50a14f",
+    "comment":  "#a0a0a0",
+    "number":   "#c86414",
+    "type":     "#b48214",
+    "constant": "#b48214",
+    "function": "#4078c0",
+    "operator": "#5a5a5a"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "C",
+  "scopeName": "source.c",
+  "patterns": [
+    { "match": "//[^\\n]*",                                              "name": "comment.line.double-slash" },
+    { "match": "/\\*([^*]|\\*+[^*/])*\\*+/",                             "name": "comment.block" },
+    { "match": "\"([^\"\\\\]|\\\\.)*\"",                                 "name": "string.quoted.double" },
+    { "match": "'([^'\\\\]|\\\\.)*'",                                    "name": "string.quoted.single" },
+    { "match": "\\b(if|else|for|while|do|switch|case|default|break|continue|return|goto|sizeof)\\b", "name": "keyword.control" },
+    { "match": "\\b(static|extern|const|volatile|register|inline|typedef|struct|union|enum)\\b",     "name": "storage.type" },
+    { "match": "\\b(void|char|short|int|long|float|double|signed|unsigned|size_t|ssize_t|ptrdiff_t|bool|int8_t|int16_t|int32_t|int64_t|uint8_t|uint16_t|uint32_t|uint64_t|FILE)\\b", "name": "support.type" },
+    { "match": "\\b(NULL|true|false)\\b",                                "name": "constant.language" },
+    { "match": "\\b[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?[fFlLuU]*\\b",    "name": "constant.numeric" },
+    { "match": "\\b0[xX][0-9a-fA-F]+[uUlL]*\\b",                         "name": "constant.numeric.hex" },
+    { "match": "#[ \\t]*[A-Za-z_]+",                                     "name": "keyword.control.directive" },
+    { "match": "[-+*/%=<>!&|^~?:]",                                      "name": "keyword.operator" }
+  ]
+}

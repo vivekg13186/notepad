@@ -1,0 +1,22 @@
+{
+  "name": "Python",
+  "scopeName": "source.python",
+  "patterns": [
+    { "match": "#[^\\n]*",                                                  "name": "comment.line.number-sign" },
+    { "match": "\"\"\"([^\"]|\"[^\"]|\"\"[^\"])*\"\"\"",                    "name": "string.quoted.triple.double" },
+    { "match": "'''([^']|'[^']|''[^'])*'''",                                "name": "string.quoted.triple.single" },
+    { "match": "[rRbBuUfF]{0,2}\"([^\"\\\\]|\\\\.)*\"",                     "name": "string.quoted.double" },
+    { "match": "[rRbBuUfF]{0,2}'([^'\\\\]|\\\\.)*'",                        "name": "string.quoted.single" },
+    { "match": "\\b(if|elif|else|for|while|break|continue|return|yield|try|except|finally|raise|with|as|pass|assert|del|in|is|not|and|or|lambda|global|nonlocal)\\b", "name": "keyword.control" },
+    { "match": "\\b(def|class|import|from|async|await)\\b",                 "name": "storage.type" },
+    { "match": "\\b(True|False|None|self|cls|__name__|__main__|__init__|__file__|__doc__)\\b", "name": "constant.language" },
+    { "match": "\\b(print|len|range|enumerate|zip|map|filter|sorted|sum|min|max|abs|round|all|any|type|isinstance|issubclass|str|int|float|bool|list|dict|tuple|set|frozenset|bytes|bytearray|open|input|repr|hex|oct|bin|chr|ord|format|hash|id|iter|next|object|property|staticmethod|classmethod|super)\\b", "name": "support.function" },
+    { "match": "\\b(Exception|ValueError|TypeError|KeyError|IndexError|AttributeError|RuntimeError|StopIteration|FileNotFoundError|IOError|OSError|ZeroDivisionError|ArithmeticError|ImportError|NameError|SyntaxError)\\b", "name": "support.type" },
+    { "match": "\\b0[xX][0-9a-fA-F_]+\\b",                                   "name": "constant.numeric.hex" },
+    { "match": "\\b0[bB][01_]+\\b",                                         "name": "constant.numeric.binary" },
+    { "match": "\\b0[oO][0-7_]+\\b",                                        "name": "constant.numeric.octal" },
+    { "match": "\\b[0-9][0-9_]*(\\.[0-9_]+)?([eE][+-]?[0-9_]+)?[jJ]?\\b",   "name": "constant.numeric" },
+    { "match": "@[A-Za-z_][A-Za-z0-9_.]*",                                  "name": "entity.name.function.decorator" },
+    { "match": "[-+*/%=<>!&|^~]",                                           "name": "keyword.operator" }
+  ]
+}

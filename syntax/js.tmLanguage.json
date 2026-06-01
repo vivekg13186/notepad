@@ -1,0 +1,20 @@
+{
+  "name": "JavaScript",
+  "scopeName": "source.js",
+  "patterns": [
+    { "match": "//[^\\n]*",                                                "name": "comment.line.double-slash" },
+    { "match": "/\\*([^*]|\\*+[^*/])*\\*+/",                               "name": "comment.block" },
+    { "match": "\"([^\"\\\\]|\\\\.)*\"",                                   "name": "string.quoted.double" },
+    { "match": "'([^'\\\\]|\\\\.)*'",                                      "name": "string.quoted.single" },
+    { "match": "`([^`\\\\]|\\\\.)*`",                                      "name": "string.template" },
+    { "match": "\\b(if|else|for|while|do|switch|case|default|break|continue|return|throw|try|catch|finally|new|delete|in|of|instanceof|typeof|void|yield|await|async)\\b", "name": "keyword.control" },
+    { "match": "\\b(var|let|const|function|class|extends|super|this|static|get|set|export|import|from|as|default)\\b", "name": "storage.type" },
+    { "match": "\\b(true|false|null|undefined|NaN|Infinity)\\b",           "name": "constant.language" },
+    { "match": "\\b(console|window|document|Math|JSON|Promise|Array|Object|String|Number|Boolean|Symbol|Map|Set|Error|RegExp|Date)\\b", "name": "support.type" },
+    { "match": "\\b0[xX][0-9a-fA-F]+[nN]?\\b",                              "name": "constant.numeric.hex" },
+    { "match": "\\b0[bB][01]+[nN]?\\b",                                    "name": "constant.numeric.binary" },
+    { "match": "\\b0[oO][0-7]+[nN]?\\b",                                   "name": "constant.numeric.octal" },
+    { "match": "\\b[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?[nN]?\\b",          "name": "constant.numeric" },
+    { "match": "[-+*/%=<>!&|^~?:]",                                        "name": "keyword.operator" }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "name": "Dark",
+  "bg":            "#1e222a",
+  "fg":            "#ffffff",
+  "gutter_bg":     "#181b21",
+  "gutter_fg":     "#5a6473",
+  "gutter_fg_cur": "#ffffff",
+  "status_bg":     "#282e38",
+  "status_fg":     "#ffffff",
+  "cursor":        "#f0f0f0",
+  "cursor_block":  "#f0f0f050",
+  "cursor_glyph":  "#1e222a",
+  "selection":     "#3c5a82c8",
+  "syntax": {
+    "default":  "#ffffff",
+    "keyword":  "#c678dd",
+    "string":   "#98c379",
+    "comment":  "#5c6370",
+    "number":   "#d19a66",
+    "type":     "#e5c07b",
+    "constant": "#e5c07b",
+    "function": "#61afef",
+    "operator": "#abb2bf"
+  }
+}

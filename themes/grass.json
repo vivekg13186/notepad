@@ -1,0 +1,25 @@
+{
+  "name": "Grass",
+  "bg":            "#1a4d2e",
+  "fg":            "#f0e3aa",
+  "gutter_bg":     "#0f3620",
+  "gutter_fg":     "#6b8a5f",
+  "gutter_fg_cur": "#f0e3aa",
+  "status_bg":     "#0f3620",
+  "status_fg":     "#f0e3aa",
+  "cursor":        "#ffea7e",
+  "cursor_block":  "#ffea7e60",
+  "cursor_glyph":  "#1a4d2e",
+  "selection":     "#4d8a4d96",
+  "syntax": {
+    "default":  "#f0e3aa",
+    "keyword":  "#ff9d7a",
+    "string":   "#c5e07a",
+    "comment":  "#7d8c5f",
+    "number":   "#ffb87a",
+    "type":     "#ffd966",
+    "constant": "#ffd966",
+    "function": "#87d5ff",
+    "operator": "#e0d49a"
+  }
+}
