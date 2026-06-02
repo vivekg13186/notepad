@@ -403,6 +403,15 @@ bool cmd_execute(Editor *ed, const char *line_in) {
         return true;
     }
 
+    /* ---- new empty buffer ---- */
+    if (strcmp(line, "new") == 0 || strcmp(line, "n") == 0) {
+        int idx = new_buffer();
+        if (idx < 0) { set_status(ed, "too many buffers"); return true; }
+        switch_to_buffer_idx(idx);
+        set_status(&g_buffers[g_buf_cur], "new buffer");
+        return true;
+    }
+
     /* ---- buffer switching ---- */
     if (strcmp(line, "bn") == 0 || strcmp(line, "next") == 0) {
         if (g_buf_count > 1) {

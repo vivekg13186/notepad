@@ -390,10 +390,6 @@ static void render(Editor *ed, const Syntax *syn, Font font) {
     /* Gutter background */
     DrawRectangle(0, editor_y, GUTTER_W, status_y - editor_y, g_theme.gutter_bg);
 
-    /* Clip text drawing to the editor region so off-screen glyphs don't
-       bleed onto the gutter. */
-    BeginScissorMode(GUTTER_W, editor_y, W - GUTTER_W, status_y - editor_y);
-
     /* Multi-line block comment state at the top of the viewport. */
     size_t vp_byte = ed_line_start(ed, ed->viewport_line);
     bool in_block = block_comment_state_at(ed, vp_byte);
@@ -407,19 +403,28 @@ static void render(Editor *ed, const Syntax *syn, Font font) {
     if ((long)cur_line >= (long)ed->viewport_line + ed->viewport_lines - 1)
         ed->viewport_line = cur_line - ed->viewport_lines + 2;
 
+    /* Draw gutter line numbers in their own pass — they sit at x < GUTTER_W
+       so they must be rendered before the horizontal-scroll scissor opens. */
+    for (int row = 0; row < ed->viewport_lines && (size_t)row + ed->viewport_line < lc; row++) {
+        size_t line_no = ed->viewport_line + (size_t)row;
+        int y = editor_y + row * LINE_HEIGHT + 4;
+        char buf[32];
+        snprintf(buf, sizeof buf, "%4zu", line_no + 1);
+        draw_text(font, buf, 4, y, line_no == cur_line ? g_theme.gutter_fg_cur : g_theme.gutter_fg);
+    }
+
     /* selection range */
     size_t sel_s = 0, sel_e = 0;
     if (ed->has_selection) ed_get_selection(ed, &sel_s, &sel_e);
+
+    /* Clip text drawing to the editor region so off-screen glyphs don't
+       bleed onto the gutter. */
+    BeginScissorMode(GUTTER_W, editor_y, W - GUTTER_W, status_y - editor_y);
 
     /* Draw lines */
     for (int row = 0; row < ed->viewport_lines && (size_t)row + ed->viewport_line < lc; row++) {
         size_t line_no = ed->viewport_line + (size_t)row;
         int y = editor_y + row * LINE_HEIGHT + 4;
-
-        /* gutter line numbers */
-        char buf[32];
-        snprintf(buf, sizeof buf, "%4zu", line_no + 1);
-        draw_text(font, buf, 4, y, line_no == cur_line ? g_theme.gutter_fg_cur : g_theme.gutter_fg);
 
         size_t lstart = ed_line_start(ed, line_no);
         size_t llen = ed_line_length(ed, line_no);
@@ -1156,6 +1161,7 @@ static const char *HELP_LINES[] = {
     ":wq                 save and quit (prompts if untitled)",
     ":q                  quit (fails if dirty)",
     ":q!                 force quit",
+    ":new / :n           open a new empty buffer in a new tab",
     ":o                  open a native file picker dialog (new buffer)",
     ":o <file>           open file directly (new buffer; supports ~/ paths)",
     ":bn / :next         switch to next buffer",
