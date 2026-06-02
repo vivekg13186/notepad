@@ -3,14 +3,16 @@ CFLAGS  := -std=c11 -O2 -Wall -Wextra -Wno-unused-parameter
 UNAME_S := $(shell uname -s)
 
 ifeq ($(UNAME_S),Darwin)
+  # forkpty is in libSystem on macOS — no extra link flag needed.
   RAYLIB_LIBS := -lraylib -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
   CFLAGS      += -I/opt/homebrew/include -I/usr/local/include
   LDFLAGS     += -L/opt/homebrew/lib    -L/usr/local/lib
 else
-  RAYLIB_LIBS := -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+  # forkpty lives in libutil on glibc.
+  RAYLIB_LIBS := -lraylib -lutil -lGL -lm -lpthread -ldl -lrt -lX11
 endif
 
-SRC := main.c editor.c gap_buffer.c syntax.c commands.c theme.c config.c
+SRC := main.c editor.c gap_buffer.c syntax.c commands.c theme.c config.c terminal.c
 OBJ := $(SRC:.c=.o)
 BIN := notepad
 

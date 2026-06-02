@@ -26,6 +26,7 @@ bool apply_theme_by_name(const char *name);
    in the schemas table to find its line_comment prefix. */
 extern bool   g_syntax_loaded;
 #include "syntax.h"
+#include "terminal.h"
 extern Syntax g_syntax;
 
 /* Multi-buffer service (defined in main.c) */
@@ -442,6 +443,24 @@ bool cmd_execute(Editor *ed, const char *line_in) {
         out->dirty  = false;
         out->cursor = 0;
         set_status(out, "ran: %s", cmd);
+        return true;
+    }
+
+    /* ---- :term [shell] — open an interactive shell in a new tab ---- */
+    if (strcmp(line, "term") == 0 || strncmp(line, "term ", 5) == 0) {
+        const char *sh = strchr(line, ' ');
+        if (sh) { sh++; while (*sh == ' ') sh++; }
+        int idx = new_buffer();
+        if (idx < 0) { set_status(ed, "too many buffers"); return true; }
+        switch_to_buffer_idx(idx);
+        Editor *t = &g_buffers[idx];
+        if (!term_spawn(t, (sh && *sh) ? sh : NULL)) {
+            set_status(t, "term: forkpty failed");
+            close_buffer(idx);
+            return true;
+        }
+        t->mode = MODE_INSERT;
+        set_status(t, "terminal opened");
         return true;
     }
 

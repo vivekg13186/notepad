@@ -14,6 +14,7 @@
 #include "syntax.h"
 #include "theme.h"
 #include "config.h"
+#include "terminal.h"
 #include "font_data.h"   /* embedded JetBrainsMono-Regular */
 
 #include <string.h>
@@ -67,6 +68,7 @@ void switch_to_buffer_idx(int idx); /* forward */
 
 void close_buffer(int idx) {
     if (idx < 0 || idx >= g_buf_count) return;
+    if (g_buffers[idx].is_terminal) term_close(&g_buffers[idx]);
     ed_free(&g_buffers[idx]);
     for (int i = idx; i < g_buf_count - 1; i++)
         g_buffers[i] = g_buffers[i + 1];
@@ -647,6 +649,31 @@ static int utf8_encode_cp(int cp, char out[5]) {
 }
 
 static void handle_insert(Editor *ed) {
+    /* Terminal buffer in INSERT: keystrokes flow to the PTY, not the gap
+       buffer.  The shell echoes them back so they surface in the buffer
+       via term_poll. */
+    if (ed->is_terminal) {
+        int c = GetCharPressed();
+        while (c > 0) {
+            if (c < 128) term_send_char(ed, (char)c);
+            else {
+                char buf[5];
+                int n = utf8_encode_cp(c, buf);
+                term_send(ed, buf, (size_t)n);
+            }
+            c = GetCharPressed();
+        }
+        if (IsKeyPressed(KEY_ENTER)     || IsKeyPressedRepeat(KEY_ENTER))     term_send_char(ed, '\n');
+        if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressedRepeat(KEY_BACKSPACE)) term_send_char(ed, 0x7F);
+        if (IsKeyPressed(KEY_TAB)       || IsKeyPressedRepeat(KEY_TAB))       term_send_char(ed, '\t');
+        if (IsKeyPressed(KEY_UP))    term_send(ed, "\x1b[A", 3);
+        if (IsKeyPressed(KEY_DOWN))  term_send(ed, "\x1b[B", 3);
+        if (IsKeyPressed(KEY_RIGHT)) term_send(ed, "\x1b[C", 3);
+        if (IsKeyPressed(KEY_LEFT))  term_send(ed, "\x1b[D", 3);
+        if (IsKeyPressed(KEY_ESCAPE)) ed->mode = MODE_NORMAL;
+        return;
+    }
+
     int c = GetCharPressed();
     while (c > 0) {
         if (c < 128) {
@@ -1173,6 +1200,7 @@ static const char *HELP_COL1[] = {
     ":bd!             force-close",
     ":t   :ls         buffer list",
     ":!cmd            run shell cmd",
+    ":term [shell]    interactive shell",
     NULL
 };
 
@@ -1494,6 +1522,11 @@ int main(int argc, char **argv) {
     else                 ed_set_status(cur_ed(), "no grammar matched");
 
     while (!WindowShouldClose() && !cur_ed()->quit) {
+        /* Drain PTY output from every terminal buffer so background tabs
+           keep scrolling even when the user is looking elsewhere. */
+        for (int i = 0; i < g_buf_count; i++)
+            if (g_buffers[i].is_terminal) term_poll(&g_buffers[i]);
+
         handle_input(cur_ed());
         BeginDrawing();
         render(cur_ed(), g_syntax_loaded ? &g_syntax : NULL, font);

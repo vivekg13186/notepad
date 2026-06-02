@@ -67,6 +67,11 @@ typedef struct {
     /* undo / redo */
     UndoStack   undo;
     bool        suppress_undo;   /* set during undo/redo to avoid recursion */
+
+    /* embedded terminal — PTY pair when is_terminal is set */
+    bool        is_terminal;
+    int         pty_fd;
+    int         pty_pid;
 } Editor;
 
 void   ed_init(Editor *ed);

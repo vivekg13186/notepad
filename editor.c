@@ -9,6 +9,7 @@ void ed_init(Editor *ed) {
     ed->mode = MODE_NORMAL;
     ed->viewport_lines = 40;
     ed->viewport_cols  = 120;
+    ed->pty_fd = -1;
     strcpy(ed->filename, "[No Name]");
 }
 
