@@ -663,7 +663,7 @@ static void handle_insert(Editor *ed) {
             }
             c = GetCharPressed();
         }
-        if (IsKeyPressed(KEY_ENTER)     || IsKeyPressedRepeat(KEY_ENTER))     term_send_char(ed, '\n');
+        if (IsKeyPressed(KEY_ENTER)     || IsKeyPressedRepeat(KEY_ENTER))     term_send_char(ed, '\r');
         if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressedRepeat(KEY_BACKSPACE)) term_send_char(ed, 0x7F);
         if (IsKeyPressed(KEY_TAB)       || IsKeyPressedRepeat(KEY_TAB))       term_send_char(ed, '\t');
         if (IsKeyPressed(KEY_UP))    term_send(ed, "\x1b[A", 3);

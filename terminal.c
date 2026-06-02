@@ -32,19 +32,19 @@
  *    \r\n    treat as plain newline (CRLF from cooked tty)         *
  * -------------------------------------------------------------- */
 
+/* Terminal output always pins the cursor to the buffer's end.  This is what
+   lets the viewport auto-scroll to the bottom on new output — the scroll
+   logic in render() is keyed off cur_line. */
 static void term_append_byte(Editor *ed, char c) {
-    size_t L = gb_length(&ed->gb);
-    bool at_end = (ed->cursor == L);
-    gb_insert_char(&ed->gb, L, c);
-    if (at_end) ed->cursor = gb_length(&ed->gb);
+    gb_insert_char(&ed->gb, gb_length(&ed->gb), c);
+    ed->cursor = gb_length(&ed->gb);
 }
 
 static void term_handle_backspace(Editor *ed) {
     size_t L = gb_length(&ed->gb);
     if (L == 0) return;
-    bool at_end = (ed->cursor == L);
     gb_delete(&ed->gb, L - 1, 1);
-    if (at_end) ed->cursor = gb_length(&ed->gb);
+    ed->cursor = gb_length(&ed->gb);
 }
 
 static void term_handle_cr(Editor *ed) {
@@ -52,9 +52,8 @@ static void term_handle_cr(Editor *ed) {
     size_t j = L;
     while (j > 0 && gb_char_at(&ed->gb, j - 1) != '\n') j--;
     if (j < L) {
-        bool at_end = (ed->cursor == L);
         gb_delete(&ed->gb, j, L - j);
-        if (at_end) ed->cursor = gb_length(&ed->gb);
+        ed->cursor = gb_length(&ed->gb);
     }
 }
 
@@ -113,7 +112,10 @@ bool term_spawn(Editor *ed, const char *shell) {
     if (pid == 0) {
         const char *sh = (shell && *shell) ? shell : getenv("SHELL");
         if (!sh || !*sh) sh = "/bin/sh";
-        setenv("TERM", "dumb", 1);
+        /* Tell the shell we're a basic ANSI terminal.  We strip escape
+           sequences in term_append_filtered, but most shells need a non-dumb
+           TERM or they suppress their prompt and line editing entirely. */
+        setenv("TERM", "xterm", 1);
         execlp(sh, sh, "-i", (char *)NULL);
         _exit(127);
     }
