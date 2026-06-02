@@ -32,29 +32,67 @@
  *    \r\n    treat as plain newline (CRLF from cooked tty)         *
  * -------------------------------------------------------------- */
 
-/* Terminal output always pins the cursor to the buffer's end.  This is what
-   lets the viewport auto-scroll to the bottom on new output — the scroll
-   logic in render() is keyed off cur_line. */
-static void term_append_byte(Editor *ed, char c) {
-    gb_insert_char(&ed->gb, gb_length(&ed->gb), c);
-    ed->cursor = gb_length(&ed->gb);
+/* ed->cursor IS the terminal's write cursor.  Printable bytes overwrite at
+   the cursor; \b / \r / CSI sequences move it around. */
+
+static char gb_at(Editor *ed, size_t i) {
+    return (i < gb_length(&ed->gb)) ? gb_char_at(&ed->gb, i) : 0;
 }
 
-static void term_handle_backspace(Editor *ed) {
+/* Insert or overwrite one byte at ed->cursor in terminal-output style:
+   if the cursor is at a non-newline byte, replace it; otherwise insert. */
+static void term_putc(Editor *ed, char c) {
     size_t L = gb_length(&ed->gb);
-    if (L == 0) return;
-    gb_delete(&ed->gb, L - 1, 1);
-    ed->cursor = gb_length(&ed->gb);
-}
-
-static void term_handle_cr(Editor *ed) {
-    size_t L = gb_length(&ed->gb);
-    size_t j = L;
-    while (j > 0 && gb_char_at(&ed->gb, j - 1) != '\n') j--;
-    if (j < L) {
-        gb_delete(&ed->gb, j, L - j);
-        ed->cursor = gb_length(&ed->gb);
+    if (ed->cursor < L && gb_at(ed, ed->cursor) != '\n') {
+        gb_delete(&ed->gb, ed->cursor, 1);
+        gb_insert_char(&ed->gb, ed->cursor, c);
+        ed->cursor++;
+    } else {
+        gb_insert_char(&ed->gb, ed->cursor, c);
+        ed->cursor++;
     }
+}
+
+/* Backspace: just move the cursor left (don't erase).  Stops at line start. */
+static void term_bs(Editor *ed) {
+    if (ed->cursor > 0 && gb_at(ed, ed->cursor - 1) != '\n')
+        ed->cursor--;
+}
+
+/* CR: move the cursor to the start of the current line. */
+static void term_cr_move(Editor *ed) {
+    while (ed->cursor > 0 && gb_at(ed, ed->cursor - 1) != '\n')
+        ed->cursor--;
+}
+
+/* LF: append newline at end of buffer and move cursor there. */
+static void term_lf(Editor *ed) {
+    size_t L = gb_length(&ed->gb);
+    ed->cursor = L;
+    gb_insert_char(&ed->gb, L, '\n');
+    ed->cursor = L + 1;
+}
+
+/* CSI K (n=0): clear from cursor to end of line (delete bytes until \n). */
+static void term_clear_to_eol(Editor *ed) {
+    size_t i = ed->cursor;
+    size_t L = gb_length(&ed->gb);
+    while (i < L && gb_at(ed, i) != '\n') i++;
+    if (i > ed->cursor) gb_delete(&ed->gb, ed->cursor, i - ed->cursor);
+}
+
+/* CSI nD: cursor back n columns (stops at line start). */
+static void term_csi_back(Editor *ed, int n) {
+    if (n <= 0) n = 1;
+    while (n-- > 0) term_bs(ed);
+}
+
+/* CSI nC: cursor forward n columns (stops at end of line). */
+static void term_csi_forward(Editor *ed, int n) {
+    if (n <= 0) n = 1;
+    size_t L = gb_length(&ed->gb);
+    while (n-- > 0 && ed->cursor < L && gb_at(ed, ed->cursor) != '\n')
+        ed->cursor++;
 }
 
 static void term_append_filtered(Editor *ed, const char *data, size_t len) {
@@ -64,15 +102,38 @@ static void term_append_filtered(Editor *ed, const char *data, size_t len) {
     size_t i = 0;
     while (i < len) {
         unsigned char c = (unsigned char)data[i];
+
+        /* --- ESC sequences --- */
         if (c == 0x1B) {
-            /* ESC ... — strip the entire control sequence. */
             i++;
             if (i >= len) break;
             char kind = data[i++];
-            if (kind == '[') {                    /* CSI: ESC [ params final */
-                while (i < len && (unsigned char)data[i] < 0x40) i++;
-                if (i < len) i++;
-            } else if (kind == ']') {             /* OSC: until BEL or ESC \ */
+            if (kind == '[') {
+                /* CSI: parse parameters then a final byte */
+                char params[32]; int plen = 0;
+                while (i < len && (unsigned char)data[i] >= 0x20 &&
+                                  (unsigned char)data[i] < 0x40) {
+                    if (plen < (int)sizeof params - 1) params[plen++] = data[i];
+                    i++;
+                }
+                params[plen] = 0;
+                if (i >= len) break;
+                char final_byte = data[i++];
+                int n = (plen > 0 && params[0] >= '0' && params[0] <= '9')
+                            ? atoi(params) : 0;
+                switch (final_byte) {
+                    case 'K':                       /* erase in line */
+                        if (n == 0) term_clear_to_eol(ed);
+                        /* n==1 erase-to-cursor / n==2 erase-line: not impl */
+                        break;
+                    case 'D': term_csi_back(ed, n);    break;
+                    case 'C': term_csi_forward(ed, n); break;
+                    /* A/B (up/down) / H (move-cursor) / J (clear screen) /
+                       m (SGR colours) etc. all dropped silently. */
+                    default: break;
+                }
+            } else if (kind == ']') {
+                /* OSC: until BEL or ESC \ */
                 while (i < len && data[i] != 0x07 && data[i] != 0x1B) i++;
                 if (i < len) i++;
             } else if (kind == '(' || kind == ')') {
@@ -80,19 +141,26 @@ static void term_append_filtered(Editor *ed, const char *data, size_t len) {
             }
             continue;
         }
-        if (c == 0x08)        { term_handle_backspace(ed); i++; continue; }
+
+        /* --- C0 controls --- */
+        if (c == 0x08)  { term_bs(ed); i++; continue; }
         if (c == '\r') {
-            /* PTY in cooked mode emits CRLF.  Skip CR when followed by LF
-               and let the LF land naturally.  A lone CR triggers line-reset. */
-            if (i + 1 < len && data[i + 1] == '\n') { i++; continue; }
-            term_handle_cr(ed);
+            /* CRLF from cooked tty → treat as plain LF.  Lone CR → carriage
+               return (cursor to line start). */
+            if (i + 1 < len && data[i + 1] == '\n') {
+                term_lf(ed);
+                i += 2; continue;
+            }
+            term_cr_move(ed);
             i++;
             continue;
         }
-        if (c == 0x07)        { i++; continue; }     /* BEL */
-        if (c == '\n' || c == '\t' ||
-            (c >= 0x20 && c < 0x7F) || c >= 0x80) {
-            term_append_byte(ed, (char)c);
+        if (c == '\n')  { term_lf(ed);     i++; continue; }
+        if (c == 0x07)  { i++; continue; }     /* BEL */
+
+        /* --- printable / utf-8 lead+continuation --- */
+        if (c == '\t' || (c >= 0x20 && c < 0x7F) || c >= 0x80) {
+            term_putc(ed, (char)c);
         }
         i++;
     }
