@@ -1162,6 +1162,7 @@ static const char *HELP_LINES[] = {
     ":q                  quit (fails if dirty)",
     ":q!                 force quit",
     ":new / :n           open a new empty buffer in a new tab",
+    ":!<command>         run a shell command; output goes to a new buffer",
     ":o                  open a native file picker dialog (new buffer)",
     ":o <file>           open file directly (new buffer; supports ~/ paths)",
     ":bn / :next         switch to next buffer",

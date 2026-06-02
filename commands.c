@@ -1,6 +1,8 @@
 #define _POSIX_C_SOURCE 200809L
 #define _DARWIN_C_SOURCE
 
+#include <sys/wait.h>
+
 #include "commands.h"
 #include "theme.h"
 #include "config.h"
@@ -400,6 +402,46 @@ bool cmd_execute(Editor *ed, const char *line_in) {
         } else {
             set_status(target, "open failed: %s", path);
         }
+        return true;
+    }
+
+    /* ---- :!cmd  run a shell command, show stdout+stderr in a new buffer ---- */
+    if (line[0] == '!') {
+        const char *cmd = line + 1;
+        while (*cmd == ' ') cmd++;
+        if (!*cmd) { set_status(ed, "usage: :!<command>"); return true; }
+
+        /* merge stderr into stdout so error messages aren't silently dropped */
+        char piped[1024];
+        snprintf(piped, sizeof piped, "%s 2>&1", cmd);
+        FILE *p = popen(piped, "r");
+        if (!p) { set_status(ed, "popen failed: %s", cmd); return true; }
+
+        int idx = new_buffer();
+        if (idx < 0) { pclose(p); set_status(ed, "too many buffers"); return true; }
+        switch_to_buffer_idx(idx);
+        Editor *out = &g_buffers[idx];
+
+        snprintf(out->filename, sizeof out->filename, "[!%s]", cmd);
+
+        char header[600];
+        int hn = snprintf(header, sizeof header, "$ %s\n", cmd);
+        ed_insert_str_at(out, gb_length(&out->gb), header, (size_t)hn);
+
+        char buf[4096];
+        size_t n;
+        while ((n = fread(buf, 1, sizeof buf, p)) > 0)
+            ed_insert_str_at(out, gb_length(&out->gb), buf, n);
+
+        int rc = pclose(p);
+        char footer[64];
+        int fn = snprintf(footer, sizeof footer, "\n[exit %d]\n",
+                          WIFEXITED(rc) ? WEXITSTATUS(rc) : -1);
+        ed_insert_str_at(out, gb_length(&out->gb), footer, (size_t)fn);
+
+        out->dirty  = false;
+        out->cursor = 0;
+        set_status(out, "ran: %s", cmd);
         return true;
     }
 
