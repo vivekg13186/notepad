@@ -59,12 +59,13 @@ VISUAL mode: move to extend selection; `y` yank, `d`/`x` cut, `p` paste, ESC can
 Commands:
 
 ```
-:w              save
+:w              save; opens the native save-as dialog if the buffer is untitled
 :w <file>       save as (supports ~/ paths, e.g. :w ~/Desktop/hello.js)
-:wq             save and quit
+:wq             save and quit (prompts via dialog if untitled)
 :q              quit (fails if dirty)
 :q!             force quit
-:o <file>       open file (supports ~/ paths)
+:o              open a native file picker dialog (macOS osascript / Linux zenity)
+:o <file>       open file directly (supports ~/ paths)
 :42             goto line 42
 :goto 42        goto line 42
 :find <text>        search forward for text

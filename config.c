@@ -201,8 +201,9 @@ static void parse_schema_entry(SchemaEntry *out, JP *j) {
         if (*j->p == '"') {
             char *v = jp_string(j);
             if (v) {
-                if      (!strcmp(k, "name"))    copy_str_field(out->name,    sizeof out->name,    v);
-                else if (!strcmp(k, "grammar")) copy_str_field(out->grammar, sizeof out->grammar, v);
+                if      (!strcmp(k, "name"))         copy_str_field(out->name,         sizeof out->name,         v);
+                else if (!strcmp(k, "grammar"))      copy_str_field(out->grammar,      sizeof out->grammar,      v);
+                else if (!strcmp(k, "line_comment")) copy_str_field(out->line_comment, sizeof out->line_comment, v);
                 free(v);
             }
         } else if (*j->p == '[') {
@@ -217,6 +218,43 @@ static void parse_schema_entry(SchemaEntry *out, JP *j) {
         free(k);
         jp_ws(j);
         if (j->p < j->end && *j->p == ',') j->p++;
+    }
+}
+
+/* ---- snippets:  { "Python": { "for": "for ${...}", ... }, ... } ---- */
+static void parse_snippets_obj(Config *c, JP *j) {
+    if (!jp_eat(j, '{')) return;
+    while (j->p < j->end) {
+        jp_ws(j);
+        if (*j->p == '}') { j->p++; return; }
+        char *lang = jp_string(j);
+        if (!lang) return;
+        if (!jp_eat(j, ':')) { free(lang); return; }
+        jp_ws(j);
+        if (*j->p != '{') { jp_skip_value(j); free(lang); continue; }
+        j->p++;
+        while (j->p < j->end) {
+            jp_ws(j);
+            if (*j->p == '}') { j->p++; break; }
+            char *trig = jp_string(j);
+            if (!trig) break;
+            if (!jp_eat(j, ':')) { free(trig); break; }
+            char *body = jp_string(j);
+            if (body && c->n_snippets < CFG_MAX_SNIPPETS) {
+                SnippetEntry *e = &c->snippets[c->n_snippets++];
+                copy_str_field(e->language, sizeof e->language, lang);
+                copy_str_field(e->trigger,  sizeof e->trigger,  trig);
+                e->body = body;
+            } else {
+                free(body);
+            }
+            free(trig);
+            jp_ws(j);
+            if (*j->p == ',') j->p++;
+        }
+        free(lang);
+        jp_ws(j);
+        if (*j->p == ',') j->p++;
     }
 }
 
@@ -279,7 +317,8 @@ bool config_load_file(Config *c, const char *path) {
                 free(v);
             }
         } else if (*j.p == '{') {
-            if      (!strcmp(k, "themes"))  parse_themes_obj(c, &j);
+            if      (!strcmp(k, "themes"))   parse_themes_obj(c, &j);
+            else if (!strcmp(k, "snippets")) parse_snippets_obj(c, &j);
             else if (!strcmp(k, "$schema") || !strcmp(k, "schemas")) parse_schema_map(c, &j);
             else    jp_skip_value(&j);
         } else if (*j.p == 't' || *j.p == 'f') {
@@ -356,11 +395,36 @@ const ThemeEntry *config_find_theme(const Config *c, const char *name) {
     return NULL;
 }
 
+static int icmp(const char *a, const char *b) {
+    for (; *a && *b; a++, b++) {
+        int ca = tolower((unsigned char)*a);
+        int cb = tolower((unsigned char)*b);
+        if (ca != cb) return ca - cb;
+    }
+    return (unsigned char)*a - (unsigned char)*b;
+}
+
 const SchemaEntry *config_find_schema_by_id(const Config *c, const char *id) {
     if (!id) return NULL;
+    /* exact match first */
     for (int i = 0; i < c->n_schemas; i++) {
         if (strcmp(c->schemas[i].id, id) == 0) return &c->schemas[i];
         if (strcmp(c->schemas[i].name, id) == 0) return &c->schemas[i];
+    }
+    /* case-insensitive fallback so :format python / :format C are forgiving */
+    for (int i = 0; i < c->n_schemas; i++) {
+        if (icmp(c->schemas[i].id, id) == 0)   return &c->schemas[i];
+        if (icmp(c->schemas[i].name, id) == 0) return &c->schemas[i];
+    }
+    return NULL;
+}
+
+const SnippetEntry *config_find_snippet(const Config *c, const char *language, const char *trigger) {
+    if (!trigger || !language) return NULL;
+    for (int i = 0; i < c->n_snippets; i++) {
+        const SnippetEntry *e = &c->snippets[i];
+        if (strcmp(e->language, language) == 0 && strcmp(e->trigger, trigger) == 0)
+            return e;
     }
     return NULL;
 }

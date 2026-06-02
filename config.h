@@ -7,6 +7,7 @@
 #define CFG_MAX_THEMES   32
 #define CFG_MAX_SCHEMAS  32
 #define CFG_MAX_EXTS      8
+#define CFG_MAX_SNIPPETS 256
 
 typedef struct {
     char name[64];        /* e.g. "dark", "light" */
@@ -14,11 +15,18 @@ typedef struct {
 } ThemeEntry;
 
 typedef struct {
+    char language[64];    /* schema name to match against, e.g. "C", "Python" */
+    char trigger[32];
+    char *body;           /* dynamically allocated */
+} SnippetEntry;
+
+typedef struct {
     char id[64];          /* schema key ("**.c"); used as :setft argument */
     char name[64];        /* display name ("C") */
     char extensions[CFG_MAX_EXTS][16];
     int  n_extensions;
     char grammar[256];    /* path to tmLanguage.json */
+    char line_comment[16];/* e.g. "// " or "# " — used by :comment / Ctrl+/ */
 } SchemaEntry;
 
 typedef struct {
@@ -37,6 +45,9 @@ typedef struct {
 
     SchemaEntry schemas[CFG_MAX_SCHEMAS];
     int         n_schemas;
+
+    SnippetEntry snippets[CFG_MAX_SNIPPETS];
+    int          n_snippets;
 } Config;
 
 void config_defaults(Config *c);
@@ -58,5 +69,6 @@ void config_load_layered(Config *c, const char *argv0);
 const ThemeEntry  *config_find_theme(const Config *c, const char *name);
 const SchemaEntry *config_find_schema_by_id(const Config *c, const char *id);
 const SchemaEntry *config_find_schema_by_ext(const Config *c, const char *path_or_ext);
+const SnippetEntry *config_find_snippet(const Config *c, const char *language, const char *trigger);
 
 #endif

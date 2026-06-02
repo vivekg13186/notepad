@@ -22,17 +22,50 @@
     "**.c": {
       "file_extensions": [".c", ".h"],
       "name":            "C",
-      "grammar":         "./syntax/c.tmLanguage.json"
+      "grammar":         "./syntax/c.tmLanguage.json",
+      "line_comment":    "// "
     },
     "**.js": {
       "file_extensions": [".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx"],
       "name":            "JavaScript",
-      "grammar":         "./syntax/js.tmLanguage.json"
+      "grammar":         "./syntax/js.tmLanguage.json",
+      "line_comment":    "// "
     },
     "**.py": {
       "file_extensions": [".py", ".pyw", ".pyi"],
       "name":            "Python",
-      "grammar":         "./syntax/python.tmLanguage.json"
+      "grammar":         "./syntax/python.tmLanguage.json",
+      "line_comment":    "# "
+    },
+    "**.z": {
+      "file_extensions": [".z"],
+      "name":            "Z",
+      "grammar":         "./syntax/z.tmLanguage.json",
+      "line_comment":    "; "
+    }
+  },
+
+  "snippets": {
+    "C": {
+      "for":  "for (int i = 0; i < N; i++) {\n    \n}",
+      "if":   "if () {\n    \n}",
+      "main": "int main(int argc, char **argv) {\n    return 0;\n}"
+    },
+    "JavaScript": {
+      "for":  "for (let i = 0; i < n; i++) {\n    \n}",
+      "fn":   "function name() {\n    \n}",
+      "log":  "console.log();"
+    },
+    "Python": {
+      "for":  "for i in range(n):\n    pass",
+      "def":  "def name():\n    pass",
+      "if":   "if :\n    pass"
+    },
+    "Z": {
+      "fn":   "(fn name (args) )",
+      "let":  "(let ((x 0)) )",
+      "if":   "(if  )",
+      "print" :"(print \"str\")"
     }
   }
 }

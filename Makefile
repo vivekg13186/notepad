@@ -4,7 +4,6 @@ UNAME_S := $(shell uname -s)
 
 ifeq ($(UNAME_S),Darwin)
   RAYLIB_LIBS := -lraylib -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
-  # Homebrew default prefix
   CFLAGS      += -I/opt/homebrew/include -I/usr/local/include
   LDFLAGS     += -L/opt/homebrew/lib    -L/usr/local/lib
 else

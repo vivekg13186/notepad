@@ -5,11 +5,16 @@
 #include <stddef.h>
 #include <regex.h>
 
+#define SYN_MAX_CAPTURES 10
+
 typedef struct {
-    char    *name;      /* TextMate scope name */
-    char    *pattern;   /* raw regex source */
-    regex_t  rx;        /* compiled */
+    char    *name;                       /* TextMate scope name */
+    char    *pattern;                    /* raw regex source (after preprocess) */
+    regex_t  rx;                         /* compiled */
     bool     compiled;
+    /* Per-capture-group scope names.  captures[0] mirrors `name` when set;
+       captures[N] (N>0) overrides for sub-group N.  NULL = inherit `name`. */
+    char    *captures[SYN_MAX_CAPTURES];
 } SyntaxRule;
 
 typedef struct {

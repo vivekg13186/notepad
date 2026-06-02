@@ -13,6 +13,24 @@ typedef enum {
     MODE_SEARCH     /* typing / search */
 } EditorMode;
 
+/* ---- Undo / redo ---- */
+typedef enum { UNDO_INSERT, UNDO_DELETE } UndoKind;
+
+typedef struct {
+    UndoKind kind;
+    size_t   pos;
+    char    *text;
+    size_t   len;
+    size_t   cursor_before;
+} UndoOp;
+
+typedef struct {
+    UndoOp *ops;
+    int     n;        /* total ops */
+    int     cap;
+    int     cur;      /* index of next op to redo (ops[0..cur) applied) */
+} UndoStack;
+
 typedef struct {
     GapBuffer   gb;
     EditorMode  mode;
@@ -23,6 +41,7 @@ typedef struct {
     size_t      viewport_line; /* first visible line */
     int         viewport_lines;
     int         viewport_cols;
+    float       viewport_x;    /* horizontal scroll in pixels */
 
     char        filename[512];
     bool        dirty;
@@ -44,6 +63,10 @@ typedef struct {
 
     /* requested quit */
     bool        quit;
+
+    /* undo / redo */
+    UndoStack   undo;
+    bool        suppress_undo;   /* set during undo/redo to avoid recursion */
 } Editor;
 
 void   ed_init(Editor *ed);
@@ -74,6 +97,8 @@ void   ed_insert_char(Editor *ed, char c);
 void   ed_insert_newline(Editor *ed);
 void   ed_backspace(Editor *ed);
 void   ed_delete_char(Editor *ed); /* delete at cursor */
+void   ed_insert_str_at(Editor *ed, size_t pos, const char *s, size_t len);
+void   ed_delete_at(Editor *ed, size_t pos, size_t len);
 
 /* selection */
 void   ed_start_selection(Editor *ed);
@@ -84,10 +109,18 @@ void   ed_cut_selection(Editor *ed);
 void   ed_paste(Editor *ed);
 void   ed_delete_selection(Editor *ed);
 
+/* UTF-8 codepoint navigation over the gap buffer */
+size_t ed_utf8_prev(Editor *ed, size_t pos);
+size_t ed_utf8_next(Editor *ed, size_t pos);
+
 /* search */
 bool   ed_search_forward(Editor *ed, const char *needle, size_t from);
 
 /* status helpers */
 void   ed_set_status(Editor *ed, const char *msg);
+
+/* undo / redo */
+void   ed_undo(Editor *ed);
+void   ed_redo(Editor *ed);
 
 #endif

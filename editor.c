@@ -12,9 +12,59 @@ void ed_init(Editor *ed) {
     strcpy(ed->filename, "[No Name]");
 }
 
+static void undo_clear_redo_tail(UndoStack *u) {
+    for (int i = u->cur; i < u->n; i++) free(u->ops[i].text);
+    u->n = u->cur;
+}
+
+static void undo_free(UndoStack *u) {
+    for (int i = 0; i < u->n; i++) free(u->ops[i].text);
+    free(u->ops);
+    u->ops = NULL; u->n = u->cap = u->cur = 0;
+}
+
+/* Append `len` bytes of `data` to op->text. */
+static void undo_op_append(UndoOp *op, const char *data, size_t len) {
+    op->text = (char *)realloc(op->text, op->len + len + 1);
+    memcpy(op->text + op->len, data, len);
+    op->len += len;
+    op->text[op->len] = 0;
+}
+
+static UndoOp *undo_push_new(UndoStack *u, UndoKind kind, size_t pos, size_t cursor_before) {
+    undo_clear_redo_tail(u);
+    if (u->n == u->cap) {
+        u->cap = u->cap ? u->cap * 2 : 64;
+        u->ops = (UndoOp *)realloc(u->ops, u->cap * sizeof(UndoOp));
+    }
+    UndoOp *op = &u->ops[u->n++];
+    op->kind = kind;
+    op->pos  = pos;
+    op->text = NULL;
+    op->len  = 0;
+    op->cursor_before = cursor_before;
+    u->cur = u->n;
+    return op;
+}
+
+/* Merge with the previous op if it's the same kind and physically adjacent.
+   Returns the op the caller should append into. */
+static UndoOp *undo_push(UndoStack *u, UndoKind kind, size_t pos, size_t cursor_before) {
+    if (u->n > 0 && u->cur == u->n) {
+        UndoOp *prev = &u->ops[u->n - 1];
+        if (prev->kind == kind) {
+            if (kind == UNDO_INSERT && pos == prev->pos + prev->len) return prev;
+            /* Backspace pattern: deletion shifts pos backward by removed bytes. */
+            if (kind == UNDO_DELETE && pos + 0 == prev->pos)         return prev; /* delete-forward streak */
+        }
+    }
+    return undo_push_new(u, kind, pos, cursor_before);
+}
+
 void ed_free(Editor *ed) {
     gb_free(&ed->gb);
     free(ed->clipboard);
+    undo_free(&ed->undo);
 }
 
 bool ed_load(Editor *ed, const char *path) {
@@ -96,10 +146,35 @@ size_t ed_pos_from_line_col(Editor *ed, size_t line, size_t col) {
     return s + col;
 }
 
+/* ------ UTF-8 codepoint navigation ------ */
+
+static int utf8_lead_bytes(unsigned char c) {
+    if ((c & 0x80) == 0)   return 1;
+    if ((c & 0xE0) == 0xC0) return 2;
+    if ((c & 0xF0) == 0xE0) return 3;
+    if ((c & 0xF8) == 0xF0) return 4;
+    return 1;
+}
+
+size_t ed_utf8_prev(Editor *ed, size_t pos) {
+    if (pos == 0) return 0;
+    pos--;
+    while (pos > 0 && (((unsigned char)gb_char_at(&ed->gb, pos)) & 0xC0) == 0x80) pos--;
+    return pos;
+}
+
+size_t ed_utf8_next(Editor *ed, size_t pos) {
+    size_t L = gb_length(&ed->gb);
+    if (pos >= L) return L;
+    int n = utf8_lead_bytes((unsigned char)gb_char_at(&ed->gb, pos));
+    if (pos + (size_t)n > L) return L;
+    return pos + (size_t)n;
+}
+
 /* ------ movement ------ */
 
-void ed_move_left(Editor *ed)  { if (ed->cursor > 0) ed->cursor--; }
-void ed_move_right(Editor *ed) { if (ed->cursor < gb_length(&ed->gb)) ed->cursor++; }
+void ed_move_left(Editor *ed)  { ed->cursor = ed_utf8_prev(ed, ed->cursor); }
+void ed_move_right(Editor *ed) { ed->cursor = ed_utf8_next(ed, ed->cursor); }
 
 void ed_move_up(Editor *ed) {
     size_t ln, col;
@@ -141,6 +216,10 @@ void ed_goto_line(Editor *ed, size_t line) {
 
 void ed_insert_char(Editor *ed, char c) {
     if (ed->has_selection) ed_delete_selection(ed);
+    if (!ed->suppress_undo) {
+        UndoOp *op = undo_push(&ed->undo, UNDO_INSERT, ed->cursor, ed->cursor);
+        undo_op_append(op, &c, 1);
+    }
     gb_insert_char(&ed->gb, ed->cursor, c);
     ed->cursor++;
     ed->dirty = true;
@@ -148,18 +227,62 @@ void ed_insert_char(Editor *ed, char c) {
 
 void ed_insert_newline(Editor *ed) { ed_insert_char(ed, '\n'); }
 
+void ed_insert_str_at(Editor *ed, size_t pos, const char *s, size_t len) {
+    if (len == 0) return;
+    if (!ed->suppress_undo) {
+        UndoOp *op = undo_push_new(&ed->undo, UNDO_INSERT, pos, ed->cursor);
+        undo_op_append(op, s, len);
+    }
+    gb_insert_str(&ed->gb, pos, s, len);
+    if (ed->cursor >= pos) ed->cursor += len;
+    ed->dirty = true;
+}
+
+void ed_delete_at(Editor *ed, size_t pos, size_t len) {
+    if (len == 0) return;
+    if (!ed->suppress_undo) {
+        char *removed = (char *)malloc(len);
+        gb_copy_range(&ed->gb, pos, pos + len, removed);
+        UndoOp *op = undo_push_new(&ed->undo, UNDO_DELETE, pos, ed->cursor);
+        undo_op_append(op, removed, len);
+        free(removed);
+    }
+    gb_delete(&ed->gb, pos, len);
+    if (ed->cursor > pos + len)      ed->cursor -= len;
+    else if (ed->cursor > pos)       ed->cursor  = pos;
+    ed->dirty = true;
+}
+
 void ed_backspace(Editor *ed) {
     if (ed->has_selection) { ed_delete_selection(ed); return; }
     if (ed->cursor == 0) return;
-    gb_delete(&ed->gb, ed->cursor - 1, 1);
-    ed->cursor--;
+    size_t prev = ed_utf8_prev(ed, ed->cursor);
+    size_t n = ed->cursor - prev;
+    if (!ed->suppress_undo) {
+        char *removed = (char *)malloc(n);
+        gb_copy_range(&ed->gb, prev, prev + n, removed);
+        UndoOp *op = undo_push_new(&ed->undo, UNDO_DELETE, prev, ed->cursor);
+        undo_op_append(op, removed, n);
+        free(removed);
+    }
+    gb_delete(&ed->gb, prev, n);
+    ed->cursor = prev;
     ed->dirty = true;
 }
 
 void ed_delete_char(Editor *ed) {
     if (ed->has_selection) { ed_delete_selection(ed); return; }
     if (ed->cursor >= gb_length(&ed->gb)) return;
-    gb_delete(&ed->gb, ed->cursor, 1);
+    size_t next = ed_utf8_next(ed, ed->cursor);
+    size_t n = next - ed->cursor;
+    if (!ed->suppress_undo) {
+        char *removed = (char *)malloc(n);
+        gb_copy_range(&ed->gb, ed->cursor, next, removed);
+        UndoOp *op = undo_push_new(&ed->undo, UNDO_DELETE, ed->cursor, ed->cursor);
+        undo_op_append(op, removed, n);
+        free(removed);
+    }
+    gb_delete(&ed->gb, ed->cursor, n);
     ed->dirty = true;
 }
 
@@ -200,6 +323,10 @@ void ed_cut_selection(Editor *ed) {
 void ed_paste(Editor *ed) {
     if (!ed->clipboard || ed->clipboard_len == 0) return;
     if (ed->has_selection) ed_delete_selection(ed);
+    if (!ed->suppress_undo) {
+        UndoOp *op = undo_push_new(&ed->undo, UNDO_INSERT, ed->cursor, ed->cursor);
+        undo_op_append(op, ed->clipboard, ed->clipboard_len);
+    }
     gb_insert_str(&ed->gb, ed->cursor, ed->clipboard, ed->clipboard_len);
     ed->cursor += ed->clipboard_len;
     ed->dirty = true;
@@ -209,6 +336,13 @@ void ed_delete_selection(Editor *ed) {
     if (!ed->has_selection) return;
     size_t s, e;
     ed_get_selection(ed, &s, &e);
+    if (!ed->suppress_undo && e > s) {
+        char *removed = (char *)malloc(e - s);
+        gb_copy_range(&ed->gb, s, e, removed);
+        UndoOp *op = undo_push_new(&ed->undo, UNDO_DELETE, s, ed->cursor);
+        undo_op_append(op, removed, e - s);
+        free(removed);
+    }
     gb_delete(&ed->gb, s, e - s);
     ed->cursor = s;
     ed->has_selection = false;
@@ -216,6 +350,45 @@ void ed_delete_selection(Editor *ed) {
 }
 
 /* ------ search ------ */
+
+/* ------ undo / redo ------ */
+
+void ed_undo(Editor *ed) {
+    UndoStack *u = &ed->undo;
+    if (u->cur == 0) return;
+    u->cur--;
+    UndoOp *op = &u->ops[u->cur];
+    ed->suppress_undo = true;
+    if (op->kind == UNDO_INSERT) {
+        /* undo an insertion = remove the inserted bytes */
+        gb_delete(&ed->gb, op->pos, op->len);
+        ed->cursor = op->cursor_before;
+    } else { /* UNDO_DELETE */
+        gb_insert_str(&ed->gb, op->pos, op->text, op->len);
+        ed->cursor = op->cursor_before;
+    }
+    ed->suppress_undo = false;
+    ed->dirty = true;
+    ed->has_selection = false;
+}
+
+void ed_redo(Editor *ed) {
+    UndoStack *u = &ed->undo;
+    if (u->cur >= u->n) return;
+    UndoOp *op = &u->ops[u->cur];
+    u->cur++;
+    ed->suppress_undo = true;
+    if (op->kind == UNDO_INSERT) {
+        gb_insert_str(&ed->gb, op->pos, op->text, op->len);
+        ed->cursor = op->pos + op->len;
+    } else { /* UNDO_DELETE */
+        gb_delete(&ed->gb, op->pos, op->len);
+        ed->cursor = op->pos;
+    }
+    ed->suppress_undo = false;
+    ed->dirty = true;
+    ed->has_selection = false;
+}
 
 bool ed_search_forward(Editor *ed, const char *needle, size_t from) {
     size_t nlen = strlen(needle);

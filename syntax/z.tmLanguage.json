@@ -1,0 +1,65 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Z",
+  "scopeName": "source.z",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#string" },
+    { "include": "#number" },
+    { "include": "#constant" },
+    { "include": "#fn-define" },
+    { "include": "#special-form" },
+    { "include": "#builtin" },
+    { "include": "#operator" }
+  ],
+  "repository": {
+    "comment": {
+      "patterns": [
+        { "match": ";[^\\n]*",                                 "name": "comment.line.semicolon.z" }
+      ]
+    },
+    "todo": {
+      "patterns": [
+        { "match": "\\b(TODO|FIXME|XXX|NOTE)\\b",              "name": "keyword.other.todo.z" }
+      ]
+    },
+    "string": {
+      "patterns": [
+        { "match": "\"([^\"\\\\]|\\\\.)*\"",                   "name": "string.quoted.double.z" }
+      ]
+    },
+    "number": {
+      "patterns": [
+        { "match": "\\b-?0[xX][0-9a-fA-F]+\\b",                "name": "constant.numeric.hex.z" },
+        { "match": "\\b-?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?\\b", "name": "constant.numeric.decimal.z" }
+      ]
+    },
+    "constant": {
+      "patterns": [
+        { "match": "\\b(true|false)\\b", "name": "constant.language.boolean.z" },
+        { "match": "\\b(null|nil)\\b",   "name": "constant.language.null.z" },
+        { "match": "\\b(pi|e)\\b",       "name": "constant.language.math.z" }
+      ]
+    },
+    "fn-define": {
+      "match": "(\\()[ \\t]*(fn)[ \\t]+([A-Za-z!?*/<>=][A-Za-z0-9!?*/<>=:-]*)",
+      "captures": {
+        "1": { "name": "punctuation.section.parens.begin.z" },
+        "2": { "name": "storage.type.function.z" },
+        "3": { "name": "entity.name.function.z" }
+      }
+    },
+    "special-form": {
+      "match": "(?<=\\(|\\s)(do|if|when|unless|cond|let|while|for|fn|lambda|set|try|catch|and|or|quote|else|->>|->|&&|\\|\\|)(?=\\s|\\))",
+      "name":  "keyword.control.z"
+    },
+    "builtin": {
+      "match": "(?<=\\(|\\s)(print|read|write|append|delete|input|exec|exit|run|import|help|argv|env|assert|sleep|type|now|timestamp|length|get|put|push|pop|keys|values|entries|array|object|contains|concat|split|join|trim|lower|upper|replace|substring|between|reverse|map|filter|reduce|sort|chunk|min|max|floor|ceil|round|trunc|abs|sign|mod|sqrt|cbrt|pow|exp|log|sin|cos|tan|random|uuid|md5|sha256)(?=\\s|\\))",
+      "name":  "support.function.builtin.z"
+    },
+    "operator": {
+      "match": "(?<=\\()[ \\t]*(==|!=|<=|>=|[-+*/%<>!])(?=[ \\t]|\\))",
+      "name":  "keyword.operator.z"
+    }
+  }
+}

@@ -1,0 +1,2 @@
+(print "Hello")
+(http:get "http://www.google.com")
