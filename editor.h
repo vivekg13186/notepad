@@ -72,6 +72,9 @@ typedef struct {
     bool        is_terminal;
     int         pty_fd;
     int         pty_pid;
+    bool        follow_output;   /* terminals: true ⇒ auto-scroll to bottom
+                                    on PTY output; cleared on wheel-up so
+                                    the user can browse scrollback. */
 } Editor;
 
 void   ed_init(Editor *ed);

@@ -400,10 +400,13 @@ static void render(Editor *ed, const Syntax *syn, Font font) {
     size_t cur_line, cur_col;
     ed_cursor_line_col(ed, &cur_line, &cur_col);
 
-    /* keep cursor in viewport */
-    if (cur_line < ed->viewport_line) ed->viewport_line = cur_line;
-    if ((long)cur_line >= (long)ed->viewport_line + ed->viewport_lines - 1)
-        ed->viewport_line = cur_line - ed->viewport_lines + 2;
+    /* keep cursor in viewport — terminal buffers honour follow_output so the
+       user can scroll back through history without the viewport snapping. */
+    if (!ed->is_terminal || ed->follow_output) {
+        if (cur_line < ed->viewport_line) ed->viewport_line = cur_line;
+        if ((long)cur_line >= (long)ed->viewport_line + ed->viewport_lines - 1)
+            ed->viewport_line = cur_line - ed->viewport_lines + 2;
+    }
 
     /* Draw gutter line numbers in their own pass — they sit at x < GUTTER_W
        so they must be rendered before the horizontal-scroll scissor opens. */
@@ -653,8 +656,12 @@ static void handle_insert(Editor *ed) {
        buffer.  The shell echoes them back so they surface in the buffer
        via term_poll. */
     if (ed->is_terminal) {
+        /* any typing means the user wants to see what they're doing —
+           snap back to bottom on the next PTY output. */
+        bool typed = false;
         int c = GetCharPressed();
         while (c > 0) {
+            typed = true;
             if (c < 128) term_send_char(ed, (char)c);
             else {
                 char buf[5];
@@ -663,14 +670,15 @@ static void handle_insert(Editor *ed) {
             }
             c = GetCharPressed();
         }
-        if (IsKeyPressed(KEY_ENTER)     || IsKeyPressedRepeat(KEY_ENTER))     term_send_char(ed, '\r');
-        if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressedRepeat(KEY_BACKSPACE)) term_send_char(ed, 0x7F);
-        if (IsKeyPressed(KEY_TAB)       || IsKeyPressedRepeat(KEY_TAB))       term_send_char(ed, '\t');
-        if (IsKeyPressed(KEY_UP))    term_send(ed, "\x1b[A", 3);
-        if (IsKeyPressed(KEY_DOWN))  term_send(ed, "\x1b[B", 3);
-        if (IsKeyPressed(KEY_RIGHT)) term_send(ed, "\x1b[C", 3);
-        if (IsKeyPressed(KEY_LEFT))  term_send(ed, "\x1b[D", 3);
+        if (IsKeyPressed(KEY_ENTER)     || IsKeyPressedRepeat(KEY_ENTER))     { term_send_char(ed, '\r'); typed = true; }
+        if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressedRepeat(KEY_BACKSPACE)) { term_send_char(ed, 0x7F); typed = true; }
+        if (IsKeyPressed(KEY_TAB)       || IsKeyPressedRepeat(KEY_TAB))       { term_send_char(ed, '\t'); typed = true; }
+        if (IsKeyPressed(KEY_UP))    { term_send(ed, "\x1b[A", 3); typed = true; }
+        if (IsKeyPressed(KEY_DOWN))  { term_send(ed, "\x1b[B", 3); typed = true; }
+        if (IsKeyPressed(KEY_RIGHT)) { term_send(ed, "\x1b[C", 3); typed = true; }
+        if (IsKeyPressed(KEY_LEFT))  { term_send(ed, "\x1b[D", 3); typed = true; }
         if (IsKeyPressed(KEY_ESCAPE)) ed->mode = MODE_NORMAL;
+        if (typed) ed->follow_output = true;
         return;
     }
 
@@ -1035,9 +1043,20 @@ static void handle_mouse(Editor *ed) {
         if (steps == 0) steps = (wheel > 0) ? 1 : -1;
         size_t lc = ed_line_count(ed);
         if (steps > 0) {
+            /* scrolling up — in a terminal, detach from "follow output" so
+               new PTY output doesn't snap us back to the bottom. */
+            if (ed->is_terminal) ed->follow_output = false;
             while (steps-- > 0 && ed->viewport_line > 0) ed->viewport_line--;
         } else {
             while (steps++ < 0 && ed->viewport_line + 1 < lc) ed->viewport_line++;
+            /* If they scrolled back down to where the cursor would be on
+               screen, re-enable follow so the next output snaps to bottom. */
+            if (ed->is_terminal) {
+                long bottom = (long)ed->viewport_line + ed->viewport_lines - 1;
+                size_t cur_line, cur_col;
+                ed_cursor_line_col(ed, &cur_line, &cur_col);
+                if ((long)cur_line <= bottom) ed->follow_output = true;
+            }
         }
     }
 

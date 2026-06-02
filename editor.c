@@ -10,6 +10,7 @@ void ed_init(Editor *ed) {
     ed->viewport_lines = 40;
     ed->viewport_cols  = 120;
     ed->pty_fd = -1;
+    ed->follow_output = true;
     strcpy(ed->filename, "[No Name]");
 }
 
