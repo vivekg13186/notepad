@@ -1153,41 +1153,69 @@ static void handle_input(Editor *ed) {
 
 /* ---- help dialog ---- */
 
-static const char *HELP_LINES[] = {
-    "notepad — commands",
+static const char *HELP_TITLE  = "notepad — commands";
+static const char *HELP_FOOTER = "Press any key to close";
+
+static const char *HELP_COL1[] = {
+    "Files & Buffers",
     "",
-    ":w                  save (prompts via native dialog if untitled)",
-    ":w <file>           save as (supports ~/ paths)",
-    ":wq                 save and quit (prompts if untitled)",
-    ":q                  quit (fails if dirty)",
-    ":q!                 force quit",
-    ":new / :n           open a new empty buffer in a new tab",
-    ":!<command>         run a shell command; output goes to a new buffer",
-    ":o                  open a native file picker dialog (new buffer)",
-    ":o <file>           open file directly (new buffer; supports ~/ paths)",
-    ":bn / :next         switch to next buffer",
-    ":bp / :prev         switch to previous buffer",
-    ":b N                switch to buffer N (1-based)",
-    ":t  / :ls / :buffers   open the buffers dropdown",
-    ":bd / :close        close current buffer (:bd! to force)",
-    ":NN  /  :goto NN    go to line NN",
-    ":find <text>        search forward for text",
-    ":replace a b        replace first occurrence of a with b",
-    ":replace-all a b    replace every occurrence of a with b",
-    ":theme              open the themes dropdown",
-    ":theme <name>       switch color theme directly",
-    ":format             open the formats dropdown",
-    ":format <name>      switch syntax grammar directly",
-    ":help               show this dialog",
-    "",
-    "Modes: ESC = NORMAL,  i = INSERT,  v = VISUAL,  / = SEARCH",
-    "Normal keys: h j k l  0 $ gg G  i a A I o O  x dd y p  v  n  u",
-    "Editing: Ctrl+C copy, Ctrl+V paste, Ctrl+X cut, Ctrl+Z undo, Ctrl+R redo",
-    "Insert helpers: Tab expands snippet,  Ctrl+N completes word,  Ctrl+/ comments line",
-    "Mouse: wheel scrolls; click positions cursor; drag selects; click a tab to switch",
-    "",
-    "Press any key to close",
+    ":w               save",
+    ":w <file>        save as",
+    ":wq              save + quit",
+    ":q   :q!         quit / force",
+    ":new  :n         new buffer",
+    ":o               open dialog",
+    ":o <file>        open file",
+    ":bn   :next      next buffer",
+    ":bp   :prev      prev buffer",
+    ":b N             switch to N",
+    ":bd  :close      close buffer",
+    ":bd!             force-close",
+    ":t   :ls         buffer list",
+    ":!cmd            run shell cmd",
+    NULL
 };
+
+static const char *HELP_COL2[] = {
+    "Editing & Navigation",
+    "",
+    ":NN  :goto N     go to line",
+    ":find <text>     forward search",
+    ":replace a b     replace first",
+    ":replace-all a b replace every",
+    ":comment  :c     toggle comment",
+    ":undo  :redo     undo / redo",
+    "",
+    "Modes  ESC i v / :",
+    "Move   h j k l 0 $ gg G",
+    "Edit   x dd y p u n",
+    "Ctrl+C/V/X   copy/paste/cut",
+    "Ctrl+Z/R     undo / redo",
+    "Ctrl+N       complete word",
+    "Ctrl+/       toggle comment",
+    "Tab          expand snippet",
+    "Mouse: wheel/click/drag/tab",
+    NULL
+};
+
+static const char *HELP_COL3[] = {
+    "Themes & Formats",
+    "",
+    ":theme           pick a theme",
+    ":theme <name>    set theme",
+    ":themes          alias",
+    "",
+    ":format          pick a format",
+    ":format <name>   set grammar",
+    ":formats         alias",
+    "",
+    ":help            this dialog",
+    NULL
+};
+
+static int help_col_len(const char **col) {
+    int n = 0; while (col[n]) n++; return n;
+}
 
 static const char *basename_of(const char *path) {
     const char *slash = strrchr(path, '/');
@@ -1351,26 +1379,55 @@ static void render_help(Font font) {
     /* dim everything */
     DrawRectangle(0, 0, W, H, (Color){0, 0, 0, 160});
 
-    int n_lines = (int)(sizeof HELP_LINES / sizeof HELP_LINES[0]);
-    int line_h  = LINE_HEIGHT;
-    int box_w   = 640;
-    int box_h   = line_h * (n_lines + 2) + 20;
-    int box_x   = (W - box_w) / 2;
-    int box_y   = (H - box_h) / 2;
+    int line_h = LINE_HEIGHT;
+    int n1 = help_col_len(HELP_COL1);
+    int n2 = help_col_len(HELP_COL2);
+    int n3 = help_col_len(HELP_COL3);
+    int max_n = n1 > n2 ? n1 : n2;
+    if (n3 > max_n) max_n = n3;
+
+    /* layout: title row + blank + columns + blank + footer */
+    int col_w = 320;
+    int box_w = col_w * 3 + 40;
+    int box_h = line_h * (max_n + 4) + 16;
+    if (box_w > W - 20) { box_w = W - 20; col_w = (box_w - 40) / 3; }
+    if (box_h > H - 20)   box_h = H - 20;
+    int box_x = (W - box_w) / 2;
+    int box_y = (H - box_h) / 2;
 
     DrawRectangle(box_x, box_y, box_w, box_h, g_theme.status_bg);
     DrawRectangleLines(box_x, box_y, box_w, box_h, g_theme.fg);
 
-    for (int i = 0; i < n_lines; i++) {
-        Color c = g_theme.fg;
-        if (i == 0)                                  c = g_theme.palette[1]; /* title in keyword color */
-        else if (HELP_LINES[i][0] == 0)              continue;
-        else if (i == n_lines - 1)                   c = g_theme.palette[3]; /* footer in comment color */
-        draw_text(font, HELP_LINES[i],
-                  (float)(box_x + 20),
-                  (float)(box_y + 14 + i * line_h),
-                  c);
+    /* title (keyword color) */
+    draw_text(font, HELP_TITLE,
+              (float)(box_x + 20), (float)(box_y + 12),
+              g_theme.palette[1]);
+
+    /* divider under the title */
+    DrawRectangle(box_x + 16, box_y + 12 + line_h + 2,
+                  box_w - 32, 1, g_theme.gutter_fg);
+
+    int content_y = box_y + 12 + line_h + 10;
+    const char **cols[3]    = { HELP_COL1, HELP_COL2, HELP_COL3 };
+    int          counts[3]  = { n1, n2, n3 };
+
+    for (int c = 0; c < 3; c++) {
+        int cx = box_x + 20 + c * col_w;
+        for (int i = 0; i < counts[c]; i++) {
+            const char *txt = cols[c][i];
+            if (!txt || !*txt) continue;
+            Color col = g_theme.fg;
+            if (i == 0) col = g_theme.palette[7];   /* column header in func color */
+            draw_text(font, txt,
+                      (float)cx, (float)(content_y + i * line_h), col);
+        }
     }
+
+    /* footer (comment color) */
+    draw_text(font, HELP_FOOTER,
+              (float)(box_x + 20),
+              (float)(box_y + box_h - line_h - 6),
+              g_theme.palette[3]);
 }
 
 /* ---------------- main ---------------- */
