@@ -1269,6 +1269,7 @@ static const char *HELP_COL2[] = {
     "",
     ":NN  :goto N     go to line",
     ":find <text>     forward search",
+    ":findall <text>  search a folder tree",
     ":replace a b     replace first",
     ":replace-all a b replace every",
     ":comment  :c     toggle comment",

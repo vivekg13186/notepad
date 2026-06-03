@@ -4,8 +4,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#define CFG_MAX_THEMES   32
-#define CFG_MAX_SCHEMAS  32
+#define CFG_MAX_THEMES   64
+#define CFG_MAX_SCHEMAS  128
 #define CFG_MAX_EXTS      8
 #define CFG_MAX_SNIPPETS 256
 

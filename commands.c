@@ -2,6 +2,8 @@
 #define _DARWIN_C_SOURCE
 
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <dirent.h>
 
 #include "commands.h"
 #include "theme.h"
@@ -186,6 +188,31 @@ static bool pick_file(char *out, size_t out_sz) {
     return run_dialog(cmd, out, out_sz);
 }
 
+/* Native "choose folder" dialog. */
+static bool pick_folder(char *out, size_t out_sz) {
+#if defined(__APPLE__)
+    const char *cmd =
+        "osascript "
+        "-e 'try' "
+        "-e 'POSIX path of (choose folder with prompt \"Search in folder\")' "
+        "-e 'on error' "
+        "-e 'return \"\"' "
+        "-e 'end try' 2>/dev/null";
+#elif defined(__linux__)
+    const char *cmd =
+        "zenity --file-selection --directory --title='Search in folder' 2>/dev/null "
+        "|| kdialog --getexistingdirectory 2>/dev/null";
+#else
+    (void)out; (void)out_sz;
+    return false;
+#endif
+    if (!run_dialog(cmd, out, out_sz)) return false;
+    /* AppleScript trails a slash; strip it for cleaner output. */
+    size_t L = strlen(out);
+    if (L > 1 && out[L - 1] == '/') out[L - 1] = 0;
+    return true;
+}
+
 /* Native "save as" dialog — user picks a destination filename. */
 static bool pick_save_file(char *out, size_t out_sz, const char *suggested) {
 #if defined(__APPLE__)
@@ -228,6 +255,77 @@ static bool pick_save_file(char *out, size_t out_sz, const char *suggested) {
     return false;
 #endif
     return run_dialog(cmd, out, out_sz);
+}
+
+/* ---- recursive text search across a folder tree ---- */
+
+static bool fs_skip_dir(const char *name) {
+    return strcmp(name, ".") == 0 || strcmp(name, "..") == 0 ||
+           strcmp(name, ".git") == 0 || strcmp(name, ".hg") == 0 ||
+           strcmp(name, ".svn") == 0 || strcmp(name, "node_modules") == 0 ||
+           strcmp(name, "build") == 0 || strcmp(name, "dist") == 0 ||
+           strcmp(name, "target") == 0 || strcmp(name, ".cache") == 0 ||
+           strcmp(name, "vendor") == 0;
+}
+
+/* Drop trailing newline / CR. */
+static void rstrip_nl(char *s) {
+    size_t L = strlen(s);
+    while (L > 0 && (s[L - 1] == '\n' || s[L - 1] == '\r')) s[--L] = 0;
+}
+
+/* Search one file line-by-line for `needle`.  Returns the number of match
+   lines appended.  Skips files that look binary (null byte in head). */
+static int fs_search_file(Editor *out, const char *path, const char *needle) {
+    FILE *f = fopen(path, "rb");
+    if (!f) return 0;
+
+    /* sniff first 4 KB for binary content */
+    char head[4096];
+    size_t got = fread(head, 1, sizeof head, f);
+    for (size_t i = 0; i < got; i++) {
+        if (head[i] == 0) { fclose(f); return 0; }
+    }
+    fseek(f, 0, SEEK_SET);
+
+    char line[4096];
+    int  lineno = 0, hits = 0;
+    while (fgets(line, sizeof line, f)) {
+        lineno++;
+        if (!strstr(line, needle)) continue;
+        rstrip_nl(line);
+        char header[1500];
+        int hn = snprintf(header, sizeof header, "%s:%d: ", path, lineno);
+        ed_insert_str_at(out, gb_length(&out->gb), header, (size_t)hn);
+        ed_insert_str_at(out, gb_length(&out->gb), line, strlen(line));
+        ed_insert_str_at(out, gb_length(&out->gb), "\n", 1);
+        hits++;
+    }
+    fclose(f);
+    return hits;
+}
+
+/* Walk a folder tree.  `depth` caps recursion (symlink-loop safety). */
+static void fs_walk(Editor *out, const char *root, const char *needle,
+                    int *files_with_hits, int *total_hits, int depth) {
+    if (depth > 24) return;
+    DIR *d = opendir(root);
+    if (!d) return;
+    struct dirent *ent;
+    while ((ent = readdir(d)) != NULL) {
+        if (fs_skip_dir(ent->d_name)) continue;
+        char path[4096];
+        snprintf(path, sizeof path, "%s/%s", root, ent->d_name);
+        struct stat st;
+        if (lstat(path, &st) != 0) continue;
+        if (S_ISDIR(st.st_mode)) {
+            fs_walk(out, path, needle, files_with_hits, total_hits, depth + 1);
+        } else if (S_ISREG(st.st_mode) && st.st_size < 10 * 1024 * 1024) {
+            int h = fs_search_file(out, path, needle);
+            if (h > 0) { (*files_with_hits)++; *total_hits += h; }
+        }
+    }
+    closedir(d);
 }
 
 static bool do_save_as(Editor *ed, const char *arg) {
@@ -522,6 +620,47 @@ bool cmd_execute(Editor *ed, const char *line_in) {
 
     if (strncmp(line, "goto ", 5) == 0) {
         ed_goto_line(ed, (size_t)atol(line + 5));
+        return true;
+    }
+
+    /* ---- findall <text> — recursive folder text search ----
+       Opens a folder picker, walks the tree, and dumps `path:line: match`
+       lines into a new buffer. */
+    if (strncmp(line, "findall ", 8) == 0 || strncmp(line, "fs ", 3) == 0) {
+        const char *text = strchr(line, ' ');
+        if (text) { text++; while (*text == ' ') text++; }
+        if (!text || !*text) { set_status(ed, "usage: :findall <text>"); return true; }
+
+        char folder[1024];
+        if (!pick_folder(folder, sizeof folder)) {
+            set_status(ed, "search cancelled");
+            return true;
+        }
+
+        int idx = new_buffer();
+        if (idx < 0) { set_status(ed, "too many buffers"); return true; }
+        switch_to_buffer_idx(idx);
+        Editor *out = &g_buffers[idx];
+        snprintf(out->filename, sizeof out->filename, "[search: %s]", text);
+
+        char header[1500];
+        int hn = snprintf(header, sizeof header,
+                          "Searching '%s' in %s\n\n", text, folder);
+        ed_insert_str_at(out, gb_length(&out->gb), header, (size_t)hn);
+
+        int files = 0, hits = 0;
+        fs_walk(out, folder, text, &files, &hits, 0);
+
+        char footer[96];
+        int fn = snprintf(footer, sizeof footer,
+                          "\n%d match%s across %d file%s\n",
+                          hits, hits == 1 ? "" : "es",
+                          files, files == 1 ? "" : "s");
+        ed_insert_str_at(out, gb_length(&out->gb), footer, (size_t)fn);
+
+        out->dirty  = false;
+        out->cursor = 0;
+        set_status(out, "search: %d matches in %d files", hits, files);
         return true;
     }
 
