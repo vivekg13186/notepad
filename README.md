@@ -33,6 +33,10 @@ A lightweight, keyboard-centric desktop text editor inspired by the efficiency o
   * Native desktop application with minimal dependencies.
   * Responsive interface powered by Raylib while maintaining a compact executable size.
 
+## Screens
+
+![Alt text](screenshot/main.png "Editor")
+![Alt text](screenshot/help.png "Help")
 
 ## Build
 
