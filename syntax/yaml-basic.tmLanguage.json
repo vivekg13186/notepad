@@ -1,0 +1,18 @@
+{
+  "name": "YAML",
+  "scopeName": "source.yaml",
+  "patterns": [
+    { "match": "#[^\\n]*",                                                    "name": "comment.line.yaml" },
+    { "match": "\"([^\"\\\\]|\\\\.)*\"",                                      "name": "string.quoted.double.yaml" },
+    { "match": "'([^']|'')*'",                                                "name": "string.quoted.single.yaml" },
+    { "match": "^---$|^\\.\\.\\.$",                                           "name": "punctuation.definition.directive.yaml" },
+    { "match": "^[ \\t]*[A-Za-z_][A-Za-z0-9_.-]*:",                           "name": "support.type.property-name.yaml" },
+    { "match": "\\b(true|false|null|yes|no|on|off|True|False|Null|TRUE|FALSE|NULL|Yes|No|On|Off)\\b", "name": "constant.language.yaml" },
+    { "match": "(^|[ \\t])-?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?\\b",         "name": "constant.numeric.yaml" },
+    { "match": "&[A-Za-z_][A-Za-z0-9_.-]*",                                   "name": "entity.name.anchor.yaml" },
+    { "match": "\\*[A-Za-z_][A-Za-z0-9_.-]*",                                 "name": "variable.alias.yaml" },
+    { "match": "!![A-Za-z_][A-Za-z0-9_.-]*|![A-Za-z_][A-Za-z0-9_.-]*",        "name": "storage.type.tag.yaml" },
+    { "match": "^[ \\t]*-[ \\t]",                                             "name": "keyword.operator.list.yaml" },
+    { "match": "[|>][+-]?",                                                   "name": "keyword.operator.block-scalar.yaml" }
+  ]
+}

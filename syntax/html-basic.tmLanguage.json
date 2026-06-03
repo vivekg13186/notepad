@@ -1,0 +1,16 @@
+{
+  "name": "HTML",
+  "scopeName": "text.html.basic",
+  "patterns": [
+    { "match": "<!--([^-]|-[^-]|--[^>])*-->",                          "name": "comment.block.html" },
+    { "match": "<!DOCTYPE[^>]*>",                                      "name": "meta.tag.sgml.doctype.html" },
+    { "match": "&([a-zA-Z]+|#[0-9]+|#[xX][0-9a-fA-F]+);",              "name": "constant.character.entity.html" },
+    { "match": "\"([^\"\\\\]|\\\\.)*\"",                               "name": "string.quoted.double.html" },
+    { "match": "'([^'\\\\]|\\\\.)*'",                                  "name": "string.quoted.single.html" },
+    { "match": "</?(html|head|body|title|meta|link|style|script|div|span|p|a|img|ul|ol|li|table|tr|td|th|thead|tbody|tfoot|form|input|button|label|select|option|textarea|h[1-6]|br|hr|nav|header|footer|main|section|article|aside|figure|figcaption|video|audio|source|iframe|svg|path|circle|rect|line|g|canvas|details|summary|dialog|template|slot|picture|map|area|object|embed|param|track|menu|fieldset|legend|datalist|output|progress|meter|time|mark|code|pre|kbd|samp|var|sub|sup|small|strong|em|b|i|u|s|del|ins|abbr|cite|q|blockquote|address|dfn|caption|colgroup|col)\\b", "name": "entity.name.tag.html" },
+    { "match": "</?[a-zA-Z][a-zA-Z0-9-]*",                             "name": "entity.name.tag.other.html" },
+    { "match": "\\b(href|src|alt|title|class|id|name|type|value|placeholder|target|rel|style|width|height|onclick|onload|onsubmit|onchange|action|method|disabled|checked|readonly|required|selected|multiple|autofocus|autoplay|controls|loop|muted|preload|defer|async|charset|content|http-equiv|viewBox|fill|stroke|d|cx|cy|r|x|y|x1|y1|x2|y2|points|transform|aria-[a-z-]+|data-[a-z-]+)=", "name": "entity.other.attribute-name.html" },
+    { "match": "[a-zA-Z-][a-zA-Z0-9-]*=",                              "name": "entity.other.attribute-name.other.html" },
+    { "match": "[<>/=]",                                               "name": "punctuation.definition.tag.html" }
+  ]
+}

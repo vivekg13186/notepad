@@ -73,12 +73,42 @@ static void term_lf(Editor *ed) {
     ed->cursor = L + 1;
 }
 
-/* CSI K (n=0): clear from cursor to end of line (delete bytes until \n). */
+/* CSI K (n=0): clear from cursor to end of line. */
 static void term_clear_to_eol(Editor *ed) {
     size_t i = ed->cursor;
     size_t L = gb_length(&ed->gb);
     while (i < L && gb_at(ed, i) != '\n') i++;
     if (i > ed->cursor) gb_delete(&ed->gb, ed->cursor, i - ed->cursor);
+}
+
+/* CSI 1K: clear from start of line to cursor. */
+static void term_clear_to_bol(Editor *ed) {
+    size_t ls = ed->cursor;
+    while (ls > 0 && gb_at(ed, ls - 1) != '\n') ls--;
+    if (ed->cursor > ls) {
+        gb_delete(&ed->gb, ls, ed->cursor - ls);
+        ed->cursor = ls;
+    }
+}
+
+/* CSI 2K: clear the entire current line (keeps the surrounding newlines). */
+static void term_clear_line(Editor *ed) {
+    size_t ls = ed->cursor;
+    while (ls > 0 && gb_at(ed, ls - 1) != '\n') ls--;
+    size_t le = ed->cursor;
+    size_t L = gb_length(&ed->gb);
+    while (le < L && gb_at(ed, le) != '\n') le++;
+    if (le > ls) {
+        gb_delete(&ed->gb, ls, le - ls);
+        ed->cursor = ls;
+    }
+}
+
+/* CSI 0J: clear from cursor to end of buffer.  Used by some progress
+   reporters and full-screen apps. */
+static void term_clear_to_end(Editor *ed) {
+    size_t L = gb_length(&ed->gb);
+    if (L > ed->cursor) gb_delete(&ed->gb, ed->cursor, L - ed->cursor);
 }
 
 /* CSI nD: cursor back n columns (stops at line start). */
@@ -123,13 +153,22 @@ static void term_append_filtered(Editor *ed, const char *data, size_t len) {
                             ? atoi(params) : 0;
                 switch (final_byte) {
                     case 'K':                       /* erase in line */
-                        if (n == 0) term_clear_to_eol(ed);
-                        /* n==1 erase-to-cursor / n==2 erase-line: not impl */
+                        if      (n == 0) term_clear_to_eol(ed);
+                        else if (n == 1) term_clear_to_bol(ed);
+                        else if (n == 2) term_clear_line(ed);
+                        break;
+                    case 'J':                       /* erase in display */
+                        if      (n == 0) term_clear_to_end(ed);
+                        /* n==1 / n==2 (full screen) intentionally dropped —
+                           we don't have a fixed-screen model, and acting on
+                           2J would wipe scrollback.  Most tools that send
+                           it (vim/htop/less) are full-screen apps which
+                           also need cursor positioning we don't render. */
                         break;
                     case 'D': term_csi_back(ed, n);    break;
                     case 'C': term_csi_forward(ed, n); break;
-                    /* A/B (up/down) / H (move-cursor) / J (clear screen) /
-                       m (SGR colours) etc. all dropped silently. */
+                    /* A/B (up/down) / H (move-cursor) / m (SGR colours) /
+                       ?-private modes: dropped silently. */
                     default: break;
                 }
             } else if (kind == ']') {

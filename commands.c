@@ -598,7 +598,7 @@ bool cmd_execute(Editor *ed, const char *line_in) {
         if (load_grammar(s->grammar))
             set_status(ed, "format: %s", s->name[0] ? s->name : s->id);
         else
-            set_status(ed, "grammar file missing: %s", s->grammar);
+            set_status(ed, "grammar empty or missing: %s", s->grammar);
         return true;
     }
 

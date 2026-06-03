@@ -101,14 +101,23 @@ int  g_buf_picker_index = 0;
 bool load_grammar(const char *path) {
     if (!path || !*path) return false;
     Syntax fresh = {0};
-    if (syntax_load_tmlanguage(&fresh, path)) {
-        if (g_syntax_loaded) syntax_free(&g_syntax);
-        g_syntax = fresh;
-        g_syntax_loaded = true;
-        return true;
+    if (!syntax_load_tmlanguage(&fresh, path)) {
+        syntax_free(&fresh);
+        return false;
     }
-    syntax_free(&fresh);
-    return false;
+    /* Count actually-compiled rules.  A grammar that's pure begin/end or
+       injections produces zero usable rules in our engine — fall back so
+       the user sees a clear error rather than "no highlighting, no clue". */
+    int compiled = 0;
+    for (size_t i = 0; i < fresh.nrules; i++) if (fresh.rules[i].compiled) compiled++;
+    if (compiled == 0) {
+        syntax_free(&fresh);
+        return false;
+    }
+    if (g_syntax_loaded) syntax_free(&g_syntax);
+    g_syntax = fresh;
+    g_syntax_loaded = true;
+    return true;
 }
 
 /* Resolve a theme name and install it into g_theme.  Resolution order:
@@ -133,8 +142,10 @@ void open_format_picker(void) {
         const SchemaEntry *s = &g_config.schemas[i];
         strncpy(g_fmt_items[g_fmt_count], s->id, 63);
         g_fmt_items[g_fmt_count][63] = 0;
+        /* short label: just the display name; falls back to the id if no
+           name is set. */
         snprintf(g_fmt_labels[g_fmt_count], sizeof g_fmt_labels[0],
-                 "%s  (%s)", s->name[0] ? s->name : s->id, s->id);
+                 "%s", s->name[0] ? s->name : s->id);
         g_fmt_count++;
     }
     if (g_fmt_count == 0) return;
@@ -1157,7 +1168,7 @@ static void handle_input(Editor *ed) {
                     snprintf(msg, sizeof msg, "format: %s",
                              s->name[0] ? s->name : s->id);
                 else
-                    snprintf(msg, sizeof msg, "grammar file missing: %s",
+                    snprintf(msg, sizeof msg, "grammar empty or missing: %s",
                              s->grammar);
                 ed_set_status(ed, msg);
             }
@@ -1379,41 +1390,54 @@ static int render_tab_bar(Font font) {
     return h;
 }
 
+/* Show at most this many rows; the rest scroll into view as you arrow. */
+#define FMT_PICKER_VISIBLE 14
+
 static void render_format_picker(Font font) {
     int W = GetScreenWidth(), H = GetScreenHeight();
     DrawRectangle(0, 0, W, H, (Color){0, 0, 0, 140});
 
-    int line_h = LINE_HEIGHT;
-    int box_w  = 420;
-    int rows   = g_fmt_count + 3;
-    int box_h  = line_h * rows + 24;
-    int box_x  = (W - box_w) / 2;
-    int box_y  = (H - box_h) / 2;
+    int line_h  = LINE_HEIGHT;
+    int visible = (g_fmt_count < FMT_PICKER_VISIBLE) ? g_fmt_count : FMT_PICKER_VISIBLE;
+
+    int box_w = 280;
+    int box_h = line_h * (visible + 3) + 20;
+    int box_x = (W - box_w) / 2;
+    int box_y = (H - box_h) / 2;
 
     DrawRectangle(box_x, box_y, box_w, box_h, g_theme.status_bg);
     DrawRectangleLines(box_x, box_y, box_w, box_h, g_theme.fg);
 
-    draw_text(font, "Formats",
-              (float)(box_x + 16), (float)(box_y + 10), g_theme.palette[1]);
+    /* Title with N/total counter */
+    char title[48];
+    snprintf(title, sizeof title, "Formats  %d/%d",
+             g_fmt_picker_index + 1, g_fmt_count);
+    draw_text(font, title,
+              (float)(box_x + 14), (float)(box_y + 10), g_theme.palette[1]);
+
+    /* Scroll window: keep highlighted index in view. */
+    int top = g_fmt_picker_index - visible / 2;
+    if (top < 0) top = 0;
+    if (top + visible > g_fmt_count) top = g_fmt_count - visible;
+    if (top < 0) top = 0;
 
     int y = box_y + 10 + line_h + 6;
-    for (int i = 0; i < g_fmt_count; i++) {
+    for (int row = 0; row < visible; row++) {
+        int i = top + row;
+        if (i >= g_fmt_count) break;
         if (i == g_fmt_picker_index) {
-            DrawRectangle(box_x + 8, y - 2, box_w - 16, line_h + 2,
+            DrawRectangle(box_x + 6, y - 2, box_w - 12, line_h + 2,
                           (Color){g_theme.palette[7].r, g_theme.palette[7].g,
                                   g_theme.palette[7].b, 60});
         }
-        char buf[128];
-        snprintf(buf, sizeof buf, "%s %s",
-                 (i == g_fmt_picker_index) ? ">" : " ", g_fmt_labels[i]);
-        draw_text(font, buf,
-                  (float)(box_x + 16), (float)y,
+        draw_text(font, g_fmt_labels[i],
+                  (float)(box_x + 14), (float)y,
                   (i == g_fmt_picker_index) ? g_theme.palette[7] : g_theme.fg);
         y += line_h;
     }
 
-    draw_text(font, "↑/↓ select   Enter apply   Esc cancel",
-              (float)(box_x + 16), (float)(box_y + box_h - line_h - 8),
+    draw_text(font, "↑/↓ Enter Esc",
+              (float)(box_x + 14), (float)(box_y + box_h - line_h - 6),
               g_theme.palette[3]);
 }
 

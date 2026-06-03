@@ -1,0 +1,17 @@
+{
+  "name": "XML",
+  "scopeName": "text.xml",
+  "patterns": [
+    { "match": "<!--([^-]|-[^-]|--[^>])*-->",                                 "name": "comment.block.xml" },
+    { "match": "<\\?[xX][mM][lL][^?]*\\?>",                                   "name": "meta.tag.preprocessor.xml" },
+    { "match": "<!DOCTYPE[^>]*>",                                             "name": "meta.tag.sgml.doctype.xml" },
+    { "match": "<!\\[CDATA\\[",                                               "name": "punctuation.cdata.begin.xml" },
+    { "match": "\\]\\]>",                                                     "name": "punctuation.cdata.end.xml" },
+    { "match": "&([a-zA-Z]+|#[0-9]+|#[xX][0-9a-fA-F]+);",                     "name": "constant.character.entity.xml" },
+    { "match": "\"([^\"\\\\]|\\\\.)*\"",                                      "name": "string.quoted.double.xml" },
+    { "match": "'([^'\\\\]|\\\\.)*'",                                         "name": "string.quoted.single.xml" },
+    { "match": "</?[a-zA-Z_][a-zA-Z0-9_.:-]*",                                "name": "entity.name.tag.xml" },
+    { "match": "[a-zA-Z_][a-zA-Z0-9_.:-]*=",                                  "name": "entity.other.attribute-name.xml" },
+    { "match": "[<>/=]",                                                      "name": "punctuation.definition.tag.xml" }
+  ]
+}

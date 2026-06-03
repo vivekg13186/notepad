@@ -24,6 +24,9 @@
  * `patterns` inside a begin/end block, full Oniguruma syntax.
  */
 
+#define _POSIX_C_SOURCE 200809L
+#define _DARWIN_C_SOURCE
+
 #include "syntax.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -274,9 +277,31 @@ static void repo_free(Repo *r) {
 typedef struct {
     SyntaxRule *rules;
     size_t      n, cap;
+    /* Memo of include names already expanded at the top level.  Without
+       this, mutually-recursive #foo / #bar repository entries blow up
+       combinatorially. */
+    char      **seen;
+    size_t      n_seen, cap_seen;
 } RuleList;
 
+#define SYN_MAX_RULES 4000           /* hard cap to keep memory bounded */
+
+static bool rules_seen(RuleList *rl, const char *name) {
+    for (size_t i = 0; i < rl->n_seen; i++)
+        if (strcmp(rl->seen[i], name) == 0) return true;
+    return false;
+}
+
+static void rules_mark_seen(RuleList *rl, const char *name) {
+    if (rl->n_seen == rl->cap_seen) {
+        rl->cap_seen = rl->cap_seen ? rl->cap_seen * 2 : 32;
+        rl->seen = (char **)realloc(rl->seen, rl->cap_seen * sizeof(char *));
+    }
+    rl->seen[rl->n_seen++] = strdup(name);
+}
+
 static SyntaxRule *rules_push(RuleList *rl) {
+    if (rl->n >= SYN_MAX_RULES) return NULL;
     if (rl->n == rl->cap) {
         rl->cap = rl->cap ? rl->cap * 2 : 32;
         rl->rules = (SyntaxRule *)realloc(rl->rules, rl->cap * sizeof(SyntaxRule));
@@ -305,10 +330,16 @@ static void parse_rule_list(JP *j, RuleList *rl, const Repo *repo, int depth) {
 }
 
 static void inline_include(const char *include_name, RuleList *rl, const Repo *repo, int depth) {
-    if (depth > 16 || !include_name) return;
+    if (depth > 32 || !include_name) return;
+    if (rl->n >= SYN_MAX_RULES) return;
     /* "#name" → look up `name` */
     const char *key = include_name;
     if (*key == '#') key++;
+    /* Cycle / re-expansion guard: each repository key is inlined once per
+       load.  Without this, A → B → A inside the repository produces a
+       cartesian blow-up of rules. */
+    if (rules_seen(rl, key)) return;
+    rules_mark_seen(rl, key);
     const RepoEntry *e = repo_find(repo, key);
     if (!e) return;
     JP sub = { e->json, e->json + strlen(e->json) };
@@ -411,6 +442,12 @@ static bool parse_rule_object(JP *j, RuleList *rl, const Repo *repo, int depth) 
     }
     if (r_match) {
         SyntaxRule *rule = rules_push(rl);
+        if (!rule) {
+            /* hit the cap — drop this rule */
+            free(r_name); free(r_match);
+            for (int i = 0; i < SYN_MAX_CAPTURES; i++) free(captures[i]);
+            return true;
+        }
         rule->name    = r_name; r_name = NULL;
         char *clean   = strip_lookarounds(r_match);
         rule->pattern = clean;
@@ -500,6 +537,8 @@ bool syntax_load_tmlanguage(Syntax *s, const char *path) {
     s->rules  = rl.rules;
     s->nrules = rl.n;
 
+    for (size_t i = 0; i < rl.n_seen; i++) free(rl.seen[i]);
+    free(rl.seen);
     repo_free(&repo);
     free(buf);
     return true;

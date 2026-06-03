@@ -25,16 +25,272 @@
       "grammar":         "./syntax/c.tmLanguage.json",
       "line_comment":    "// "
     },
+    "**.cpp": {
+      "file_extensions": [".cpp", ".cc", ".cxx", ".hpp", ".hh", ".hxx"],
+      "name":            "C++",
+      "grammar":         "./syntax/cpp.tmLanguage.json",
+      "line_comment":    "// "
+    },
+    "**.cs": {
+      "file_extensions": [".cs"],
+      "name":            "C#",
+      "grammar":         "./syntax/csharp.tmLanguage.json",
+      "line_comment":    "// "
+    },
+    "**.java": {
+      "file_extensions": [".java"],
+      "name":            "Java",
+      "grammar":         "./syntax/java.tmLanguage.json",
+      "line_comment":    "// "
+    },
+    "**.kt": {
+      "file_extensions": [".kt", ".kts"],
+      "name":            "Kotlin",
+      "grammar":         "./syntax/java.tmLanguage.json",
+      "line_comment":    "// "
+    },
     "**.js": {
-      "file_extensions": [".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx"],
+      "file_extensions": [".js", ".mjs", ".cjs"],
       "name":            "JavaScript",
-      "grammar":         "./syntax/js.tmLanguage.json",
+      "grammar":         "./syntax/JavaScript.tmLanguage.json",
+      "line_comment":    "// "
+    },
+    "**.jsx": {
+      "file_extensions": [".jsx"],
+      "name":            "JavaScript React",
+      "grammar":         "./syntax/JavaScriptReact.tmLanguage.json",
+      "line_comment":    "// "
+    },
+    "**.ts": {
+      "file_extensions": [".ts"],
+      "name":            "TypeScript",
+      "grammar":         "./syntax/TypeScript.tmLanguage.json",
+      "line_comment":    "// "
+    },
+    "**.tsx": {
+      "file_extensions": [".tsx"],
+      "name":            "TypeScript React",
+      "grammar":         "./syntax/TypeScriptReact.tmLanguage.json",
       "line_comment":    "// "
     },
     "**.py": {
       "file_extensions": [".py", ".pyw", ".pyi"],
       "name":            "Python",
-      "grammar":         "./syntax/python.tmLanguage.json",
+      "grammar":         "./syntax/MagicPython.tmLanguage.json",
+      "line_comment":    "# "
+    },
+    "**.go": {
+      "file_extensions": [".go"],
+      "name":            "Go",
+      "grammar":         "./syntax/go.tmLanguage.json",
+      "line_comment":    "// "
+    },
+    "**.rs": {
+      "file_extensions": [".rs"],
+      "name":            "Rust",
+      "grammar":         "./syntax/rust.tmLanguage.json",
+      "line_comment":    "// "
+    },
+    "**.rb": {
+      "file_extensions": [".rb"],
+      "name":            "Ruby",
+      "grammar":         "./syntax/ruby.tmLanguage.json",
+      "line_comment":    "# "
+    },
+    "**.php": {
+      "file_extensions": [".php"],
+      "name":            "PHP",
+      "grammar":         "./syntax/php.tmLanguage.json",
+      "line_comment":    "// "
+    },
+    "**.swift": {
+      "file_extensions": [".swift"],
+      "name":            "Swift",
+      "grammar":         "./syntax/swift.tmLanguage.json",
+      "line_comment":    "// "
+    },
+    "**.lua": {
+      "file_extensions": [".lua"],
+      "name":            "Lua",
+      "grammar":         "./syntax/lua.tmLanguage.json",
+      "line_comment":    "-- "
+    },
+    "**.dart": {
+      "file_extensions": [".dart"],
+      "name":            "Dart",
+      "grammar":         "./syntax/dart.tmLanguage.json",
+      "line_comment":    "// "
+    },
+    "**.r": {
+      "file_extensions": [".r", ".R"],
+      "name":            "R",
+      "grammar":         "./syntax/r.tmLanguage.json",
+      "line_comment":    "# "
+    },
+    "**.jl": {
+      "file_extensions": [".jl"],
+      "name":            "Julia",
+      "grammar":         "./syntax/julia.tmLanguage.json",
+      "line_comment":    "# "
+    },
+    "**.clj": {
+      "file_extensions": [".clj", ".cljs", ".cljc", ".edn"],
+      "name":            "Clojure",
+      "grammar":         "./syntax/clojure.tmLanguage.json",
+      "line_comment":    "; "
+    },
+    "**.fs": {
+      "file_extensions": [".fs", ".fsi", ".fsx"],
+      "name":            "F#",
+      "grammar":         "./syntax/fsharp.tmLanguage.json",
+      "line_comment":    "// "
+    },
+    "**.pl": {
+      "file_extensions": [".pl", ".pm"],
+      "name":            "Perl",
+      "grammar":         "./syntax/perl.tmLanguage.json",
+      "line_comment":    "# "
+    },
+    "**.groovy": {
+      "file_extensions": [".groovy", ".gradle"],
+      "name":            "Groovy",
+      "grammar":         "./syntax/groovy.tmLanguage.json",
+      "line_comment":    "// "
+    },
+    "**.html": {
+      "file_extensions": [".html", ".htm"],
+      "name":            "HTML",
+      "grammar":         "./syntax/html-basic.tmLanguage.json",
+      "line_comment":    "<!-- "
+    },
+    "**.css": {
+      "file_extensions": [".css"],
+      "name":            "CSS",
+      "grammar":         "./syntax/css.tmLanguage.json"
+    },
+    "**.scss": {
+      "file_extensions": [".scss", ".sass"],
+      "name":            "SCSS",
+      "grammar":         "./syntax/scss.tmLanguage.json",
+      "line_comment":    "// "
+    },
+    "**.less": {
+      "file_extensions": [".less"],
+      "name":            "Less",
+      "grammar":         "./syntax/less.tmLanguage.json",
+      "line_comment":    "// "
+    },
+    "**.xml": {
+      "file_extensions": [".xml", ".xsd", ".xslt", ".svg", ".plist"],
+      "name":            "XML",
+      "grammar":         "./syntax/xml-basic.tmLanguage.json"
+    },
+    "**.json": {
+      "file_extensions": [".json"],
+      "name":            "JSON",
+      "grammar":         "./syntax/json-basic.tmLanguage.json"
+    },
+    "**.jsonc": {
+      "file_extensions": [".jsonc"],
+      "name":            "JSON with Comments",
+      "grammar":         "./syntax/JSONC.tmLanguage.json",
+      "line_comment":    "// "
+    },
+    "**.jsonl": {
+      "file_extensions": [".jsonl", ".ndjson"],
+      "name":            "JSON Lines",
+      "grammar":         "./syntax/JSONL.tmLanguage.json"
+    },
+    "**.yaml": {
+      "file_extensions": [".yaml", ".yml"],
+      "name":            "YAML",
+      "grammar":         "./syntax/yaml-basic.tmLanguage.json",
+      "line_comment":    "# "
+    },
+    "**.toml": {
+      "file_extensions": [".toml"],
+      "name":            "TOML",
+      "grammar":         "./syntax/ini.tmLanguage.json",
+      "line_comment":    "# "
+    },
+    "**.ini": {
+      "file_extensions": [".ini", ".cfg", ".conf"],
+      "name":            "INI",
+      "grammar":         "./syntax/ini.tmLanguage.json",
+      "line_comment":    "; "
+    },
+    "**.env": {
+      "file_extensions": [".env"],
+      "name":            "Dotenv",
+      "grammar":         "./syntax/dotenv.tmLanguage.json",
+      "line_comment":    "# "
+    },
+    "**.md": {
+      "file_extensions": [".md", ".markdown"],
+      "name":            "Markdown",
+      "grammar":         "./syntax/markdown.tmLanguage.json"
+    },
+    "**.rst": {
+      "file_extensions": [".rst"],
+      "name":            "reStructuredText",
+      "grammar":         "./syntax/rst.tmLanguage.json"
+    },
+    "**.tex": {
+      "file_extensions": [".tex", ".sty", ".cls"],
+      "name":            "LaTeX",
+      "grammar":         "./syntax/LaTeX.tmLanguage.json",
+      "line_comment":    "% "
+    },
+    "**.sh": {
+      "file_extensions": [".sh", ".bash", ".zsh", ".fish"],
+      "name":            "Shell",
+      "grammar":         "./syntax/shell-unix-bash.tmLanguage.json",
+      "line_comment":    "# "
+    },
+    "**.bat": {
+      "file_extensions": [".bat", ".cmd"],
+      "name":            "Batch",
+      "grammar":         "./syntax/batchfile.tmLanguage.json",
+      "line_comment":    "REM "
+    },
+    "**.ps1": {
+      "file_extensions": [".ps1", ".psm1", ".psd1"],
+      "name":            "PowerShell",
+      "grammar":         "./syntax/powershell.tmLanguage.json",
+      "line_comment":    "# "
+    },
+    "**.dockerfile": {
+      "file_extensions": [".dockerfile", "Dockerfile"],
+      "name":            "Dockerfile",
+      "grammar":         "./syntax/docker.tmLanguage.json",
+      "line_comment":    "# "
+    },
+    "**.makefile": {
+      "file_extensions": ["Makefile", ".mk"],
+      "name":            "Makefile",
+      "grammar":         "./syntax/make.tmLanguage.json",
+      "line_comment":    "# "
+    },
+    "**.sql": {
+      "file_extensions": [".sql"],
+      "name":            "SQL",
+      "grammar":         "./syntax/sql.tmLanguage.json",
+      "line_comment":    "-- "
+    },
+    "**.diff": {
+      "file_extensions": [".diff", ".patch"],
+      "name":            "Diff",
+      "grammar":         "./syntax/diff.tmLanguage.json"
+    },
+    "**.log": {
+      "file_extensions": [".log"],
+      "name":            "Log",
+      "grammar":         "./syntax/log.tmLanguage.json"
+    },
+    "**.gitignore": {
+      "file_extensions": [".gitignore", ".dockerignore", ".npmignore"],
+      "name":            "Ignore",
+      "grammar":         "./syntax/ignore.tmLanguage.json",
       "line_comment":    "# "
     },
     "**.z": {
@@ -64,8 +320,7 @@
     "Z": {
       "fn":   "(fn name (args) )",
       "let":  "(let ((x 0)) )",
-      "if":   "(if  )",
-      "print" :"(print \"str\")"
+      "if":   "(if  )"
     }
   }
 }

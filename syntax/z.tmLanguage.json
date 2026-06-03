@@ -5,61 +5,89 @@
   "patterns": [
     { "include": "#comment" },
     { "include": "#string" },
+    { "include": "#fn-definition" },
+    { "include": "#lambda-definition" },
+    { "include": "#special-forms" },
+    { "include": "#builtins-system" },
+    { "include": "#builtins-collection" },
+    { "include": "#builtins-string" },
+    { "include": "#builtins-math" },
+    { "include": "#builtins-io" },
+    { "include": "#builtins-namespaced" },
+    { "include": "#operators" },
+    { "include": "#constants" },
     { "include": "#number" },
-    { "include": "#constant" },
-    { "include": "#fn-define" },
-    { "include": "#special-form" },
-    { "include": "#builtin" },
-    { "include": "#operator" }
+    { "include": "#symbol" }
   ],
   "repository": {
     "comment": {
-      "patterns": [
-        { "match": ";[^\\n]*",                                 "name": "comment.line.semicolon.z" }
-      ]
-    },
-    "todo": {
-      "patterns": [
-        { "match": "\\b(TODO|FIXME|XXX|NOTE)\\b",              "name": "keyword.other.todo.z" }
-      ]
+      "name": "comment.line.semicolon.z",
+      "match": ";.*$"
     },
     "string": {
-      "patterns": [
-        { "match": "\"([^\"\\\\]|\\\\.)*\"",                   "name": "string.quoted.double.z" }
-      ]
+      "name": "string.quoted.double.z",
+      "match": "\"([^\"\\\\]|\\\\.)*\""
     },
     "number": {
+      "name": "constant.numeric.z",
+      "match": "-?[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?"
+    },
+    "constants": {
       "patterns": [
-        { "match": "\\b-?0[xX][0-9a-fA-F]+\\b",                "name": "constant.numeric.hex.z" },
-        { "match": "\\b-?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?\\b", "name": "constant.numeric.decimal.z" }
+        { "name": "constant.language.boolean.z", "match": "\\b(true|false)\\b" },
+        { "name": "constant.language.null.z",    "match": "\\bnull\\b" }
       ]
     },
-    "constant": {
-      "patterns": [
-        { "match": "\\b(true|false)\\b", "name": "constant.language.boolean.z" },
-        { "match": "\\b(null|nil)\\b",   "name": "constant.language.null.z" },
-        { "match": "\\b(pi|e)\\b",       "name": "constant.language.math.z" }
-      ]
+    "special-forms": {
+      "name":  "keyword.control.z",
+      "match": "(?<=\\()\\s*(do|if|while|for|fn|lambda|set|try|catch|quote|and|or|import|return|break|continue|match)\\b"
     },
-    "fn-define": {
-      "match": "(\\()[ \\t]*(fn)[ \\t]+([A-Za-z!?*/<>=][A-Za-z0-9!?*/<>=:-]*)",
+    "fn-definition": {
+      "match": "(\\()\\s*(fn)\\s+([A-Za-z_][A-Za-z0-9_!?:.-]*)",
       "captures": {
         "1": { "name": "punctuation.section.parens.begin.z" },
-        "2": { "name": "storage.type.function.z" },
+        "2": { "name": "keyword.control.z" },
         "3": { "name": "entity.name.function.z" }
       }
     },
-    "special-form": {
-      "match": "(?<=\\(|\\s)(do|if|when|unless|cond|let|while|for|fn|lambda|set|try|catch|and|or|quote|else|->>|->|&&|\\|\\|)(?=\\s|\\))",
-      "name":  "keyword.control.z"
+    "lambda-definition": {
+      "match": "(\\()\\s*(lambda)\\b",
+      "captures": {
+        "1": { "name": "punctuation.section.parens.begin.z" },
+        "2": { "name": "keyword.control.z" }
+      }
     },
-    "builtin": {
-      "match": "(?<=\\(|\\s)(print|read|write|append|delete|input|exec|exit|run|import|help|argv|env|assert|sleep|type|now|timestamp|length|get|put|push|pop|keys|values|entries|array|object|contains|concat|split|join|trim|lower|upper|replace|substring|between|reverse|map|filter|reduce|sort|chunk|min|max|floor|ceil|round|trunc|abs|sign|mod|sqrt|cbrt|pow|exp|log|sin|cos|tan|random|uuid|md5|sha256)(?=\\s|\\))",
-      "name":  "support.function.builtin.z"
+    "builtins-system": {
+      "name":  "support.function.system.z",
+      "match": "(?<=\\(|\\s)(print|type|assert|sleep|now|timestamp|format-date|env|exec|run|argv|exit|import)\\b"
     },
-    "operator": {
-      "match": "(?<=\\()[ \\t]*(==|!=|<=|>=|[-+*/%<>!])(?=[ \\t]|\\))",
-      "name":  "keyword.operator.z"
+    "builtins-collection": {
+      "name":  "support.function.collection.z",
+      "match": "(?<=\\(|\\s)(array|object|get|put|push|pop|length|keys|values|entries|map|filter|reduce)\\b"
+    },
+    "builtins-string": {
+      "name":  "support.function.string.z",
+      "match": "(?<=\\(|\\s)(concat|split|trim|lower|upper|replace|substring)\\b"
+    },
+    "builtins-math": {
+      "name":  "support.function.math.z",
+      "match": "(?<=\\(|\\s)(min|max|floor|ceil|abs|random)\\b"
+    },
+    "builtins-io": {
+      "name":  "support.function.io.z",
+      "match": "(?<=\\(|\\s)(read|write|append|delete)\\b"
+    },
+    "builtins-namespaced": {
+      "name":  "support.function.namespaced.z",
+      "match": "(?<=\\(|\\s)(json:parse|json:stringify|http:get|http:post)\\b"
+    },
+    "operators": {
+      "name":  "keyword.operator.z",
+      "match": "(?<=\\(|\\s)(\\+|\\-|\\*|/|%|<=|>=|==|!=|<|>|&&|\\|\\||!)(?=\\s|\\))"
+    },
+    "symbol": {
+      "name":  "variable.other.z",
+      "match": "[A-Za-z_][A-Za-z0-9_!?:.-]*"
     }
   }
 }
