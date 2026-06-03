@@ -866,6 +866,12 @@ static bool is_mod_down(void) {
     return IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)
         || IsKeyDown(KEY_LEFT_SUPER)   || IsKeyDown(KEY_RIGHT_SUPER);
 }
+static bool is_alt_down(void) {
+    return IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT);
+}
+static bool is_shift_down(void) {
+    return IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+}
 
 /* Replace ed->clipboard with `data` (len bytes) and mirror to the OS. */
 static void clipboard_store(Editor *ed, const char *data, size_t len) {
@@ -937,9 +943,24 @@ static void clipboard_cut(Editor *ed) {
 }
 
 static bool handle_clipboard_shortcuts(Editor *ed) {
-    if (!is_mod_down()) return false;
-    /* Only meaningful for editor modes — pickers / help / cmdline are skipped
-       at the caller. */
+    bool alt = is_alt_down();
+    bool cmd = is_mod_down();
+
+    /* ---- Alt/Option: word-granularity navigation and deletion. ---- */
+    if (alt) {
+        if (IsKeyPressed(KEY_LEFT)  || IsKeyPressedRepeat(KEY_LEFT))
+            { ed->cursor = ed_word_left(ed,  ed->cursor); return true; }
+        if (IsKeyPressed(KEY_RIGHT) || IsKeyPressedRepeat(KEY_RIGHT))
+            { ed->cursor = ed_word_right(ed, ed->cursor); return true; }
+        if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressedRepeat(KEY_BACKSPACE))
+            { ed_delete_word_left(ed);  return true; }
+        if (IsKeyPressed(KEY_DELETE)    || IsKeyPressedRepeat(KEY_DELETE))
+            { ed_delete_word_right(ed); return true; }
+    }
+
+    if (!cmd) return false;
+
+    /* ---- Cmd/Ctrl: clipboard, undo, line ops. ---- */
     if (IsKeyPressed(KEY_C)) { clipboard_copy(ed);
                                if (ed->mode == MODE_VISUAL) {
                                    ed_clear_selection(ed);
@@ -952,28 +973,37 @@ static bool handle_clipboard_shortcuts(Editor *ed) {
     if (IsKeyPressed(KEY_V)) { clipboard_paste(ed);
                                if (ed->mode == MODE_VISUAL) ed->mode = MODE_NORMAL;
                                return true; }
-    /* Ctrl+Z = undo,  Ctrl+Shift+Z / Ctrl+R = redo */
     if (IsKeyPressed(KEY_Z)) {
-        if (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) {
-            ed_redo(ed); ed_set_status(ed, "redo");
-        } else {
-            ed_undo(ed); ed_set_status(ed, "undo");
-        }
+        if (is_shift_down()) { ed_redo(ed); ed_set_status(ed, "redo"); }
+        else                 { ed_undo(ed); ed_set_status(ed, "undo"); }
         return true;
     }
     if (IsKeyPressed(KEY_R)) { ed_redo(ed); ed_set_status(ed, "redo"); return true; }
-    /* Ctrl+/ — toggle comment on current line / selected lines */
     if (IsKeyPressed(KEY_SLASH)) {
         extern void toggle_comment_lines(Editor *);
         toggle_comment_lines(ed);
         ed_set_status(ed, "toggled comment");
         return true;
     }
-    /* Ctrl+N — buffer-word autocomplete */
     if (IsKeyPressed(KEY_N)) {
         if (!autocomplete_at_cursor(ed)) ed_set_status(ed, "no completion");
         return true;
     }
+    /* Cmd+Left / Cmd+Right: jump to line start / end (macOS convention). */
+    if (IsKeyPressed(KEY_LEFT)  || IsKeyPressedRepeat(KEY_LEFT))
+        { ed_move_line_start(ed); return true; }
+    if (IsKeyPressed(KEY_RIGHT) || IsKeyPressedRepeat(KEY_RIGHT))
+        { ed_move_line_end(ed);   return true; }
+    /* Cmd+Backspace: delete to line start.  Cmd+Shift+K or Cmd+Shift+Backspace: kill whole line. */
+    if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressedRepeat(KEY_BACKSPACE)) {
+        if (is_shift_down()) ed_delete_line(ed);
+        else                 ed_delete_to_line_start(ed);
+        return true;
+    }
+    if (IsKeyPressed(KEY_DELETE) || IsKeyPressedRepeat(KEY_DELETE))
+        { ed_delete_to_line_end(ed); return true; }
+    if (IsKeyPressed(KEY_K) && is_shift_down())
+        { ed_delete_line(ed); return true; }
     return false;
 }
 
@@ -1241,6 +1271,12 @@ static const char *HELP_COL2[] = {
     "Ctrl+N       complete word",
     "Ctrl+/       toggle comment",
     "Tab          expand snippet",
+    "Alt+←/→      jump by word",
+    "Alt+Bksp/Del kill word L/R",
+    "Cmd+←/→      line start/end",
+    "Cmd+Bksp     kill to line start",
+    "Cmd+Del      kill to line end",
+    "Cmd+Shift+K  kill whole line",
     "Mouse: wheel/click/drag/tab",
     NULL
 };

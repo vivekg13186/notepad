@@ -207,6 +207,72 @@ void ed_move_line_end(Editor *ed) {
 void ed_move_doc_start(Editor *ed) { ed->cursor = 0; }
 void ed_move_doc_end(Editor *ed)   { ed->cursor = gb_length(&ed->gb); }
 
+/* ------ word navigation ------ */
+
+static bool is_word_byte(unsigned char c) {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+           (c >= '0' && c <= '9') || c == '_' || c >= 0x80;
+}
+
+size_t ed_word_right(Editor *ed, size_t pos) {
+    size_t L = gb_length(&ed->gb);
+    /* if on word, jump past it */
+    while (pos < L && is_word_byte((unsigned char)gb_char_at(&ed->gb, pos))) pos++;
+    /* then skip following whitespace/punct until next word or newline */
+    while (pos < L && !is_word_byte((unsigned char)gb_char_at(&ed->gb, pos))) {
+        if (gb_char_at(&ed->gb, pos) == '\n') break;
+        pos++;
+    }
+    return pos;
+}
+
+size_t ed_word_left(Editor *ed, size_t pos) {
+    if (pos == 0) return 0;
+    pos--;
+    /* skip non-word backward (but stop at newlines) */
+    while (pos > 0 && !is_word_byte((unsigned char)gb_char_at(&ed->gb, pos))) {
+        if (gb_char_at(&ed->gb, pos) == '\n') return pos + 1;
+        pos--;
+    }
+    /* walk to the start of the word */
+    while (pos > 0 && is_word_byte((unsigned char)gb_char_at(&ed->gb, pos - 1))) pos--;
+    return pos;
+}
+
+void ed_delete_word_left(Editor *ed) {
+    if (ed->cursor == 0) return;
+    size_t t = ed_word_left(ed, ed->cursor);
+    if (t < ed->cursor) ed_delete_at(ed, t, ed->cursor - t);
+}
+
+void ed_delete_word_right(Editor *ed) {
+    size_t t = ed_word_right(ed, ed->cursor);
+    if (t > ed->cursor) ed_delete_at(ed, ed->cursor, t - ed->cursor);
+}
+
+void ed_delete_to_line_start(Editor *ed) {
+    size_t ln, col;
+    ed_cursor_line_col(ed, &ln, &col);
+    size_t s = ed_line_start(ed, ln);
+    if (ed->cursor > s) ed_delete_at(ed, s, ed->cursor - s);
+}
+
+void ed_delete_to_line_end(Editor *ed) {
+    size_t ln, col;
+    ed_cursor_line_col(ed, &ln, &col);
+    size_t e = ed_line_start(ed, ln) + ed_line_length(ed, ln);
+    if (e > ed->cursor) ed_delete_at(ed, ed->cursor, e - ed->cursor);
+}
+
+void ed_delete_line(Editor *ed) {
+    size_t ln, col;
+    ed_cursor_line_col(ed, &ln, &col);
+    size_t s = ed_line_start(ed, ln);
+    size_t e = s + ed_line_length(ed, ln);
+    if (e < gb_length(&ed->gb)) e++;       /* swallow the newline */
+    if (e > s) ed_delete_at(ed, s, e - s);
+}
+
 void ed_goto_line(Editor *ed, size_t line) {
     if (line == 0) line = 1;
     size_t lc = ed_line_count(ed);

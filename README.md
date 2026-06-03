@@ -1,6 +1,38 @@
-# notepad
+# Notepad
 
-A tiny Neovim-style notepad in C using raylib.
+A lightweight, keyboard-centric desktop text editor inspired by the efficiency of NeoVim, designed for speed, simplicity, and a minimal resource footprint.
+
+## Features
+
+* **Lightweight & Fast**
+
+  * Built with C and Raylib for excellent performance, low memory usage, and a modern native UI.
+
+* **Keyboard-First Workflow**
+
+  * NeoVim-inspired shortcuts and navigation.
+  * Type `:help` to view all available commands and keyboard shortcuts.
+
+* **Syntax Highlighting**
+
+  * Supports TextMate grammars (`tmLanguage.json`) for language syntax highlighting.
+  * Compatible with existing VS Code grammar definitions, allowing easy reuse of syntax files.
+
+* **Customizable Themes**
+
+  * Theme system powered by JSON configuration files.
+  * Easily create, modify, and share editor themes without recompiling the application.
+
+* **User-Defined Snippets**
+
+  * Snippet definitions stored in simple JSON files.
+  * Add, edit, or remove snippets by modifying configuration files directly.
+
+* **Small Footprint, Rich UI**
+
+  * Native desktop application with minimal dependencies.
+  * Responsive interface powered by Raylib while maintaining a compact executable size.
+
 
 ## Build
 

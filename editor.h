@@ -100,6 +100,17 @@ void   ed_move_doc_start(Editor *ed);
 void   ed_move_doc_end(Editor *ed);
 void   ed_goto_line(Editor *ed, size_t line); /* 1-based */
 
+/* word navigation: byte position after one word-jump from `pos` */
+size_t ed_word_left(Editor *ed, size_t pos);
+size_t ed_word_right(Editor *ed, size_t pos);
+
+/* bulk deletes */
+void   ed_delete_word_left(Editor *ed);
+void   ed_delete_word_right(Editor *ed);
+void   ed_delete_to_line_start(Editor *ed);
+void   ed_delete_to_line_end(Editor *ed);
+void   ed_delete_line(Editor *ed);
+
 /* editing */
 void   ed_insert_char(Editor *ed, char c);
 void   ed_insert_newline(Editor *ed);
