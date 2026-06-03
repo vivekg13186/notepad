@@ -35,8 +35,8 @@ A lightweight, keyboard-centric desktop text editor inspired by the efficiency o
 
 ## Screens
 
-![Alt text](screenshot/main.png "Editor")
-![Alt text](screenshot/help.png "Help")
+![Alt text](screenshots/main.png "Editor")
+![Alt text](screenshots/help.png "Help")
 
 ## Build
 
